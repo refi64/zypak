@@ -1,0 +1,3 @@
+[submodule "nickle"]
+	path = nickle
+	url = https://github.com/refi64/nickle
