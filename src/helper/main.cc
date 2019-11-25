@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
 
   c_argv.push_back(nullptr);
 
-  Log() << Join(command.begin(), command.end());
+  Debug() << Join(command.begin(), command.end());
 
   execvp(c_argv[0], const_cast<char* const*>(c_argv.data()));
   Errno() << "exec failed for " << Join(command.begin(), command.end());
