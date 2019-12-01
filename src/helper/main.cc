@@ -13,6 +13,7 @@
 #include "base/str_util.h"
 
 #include <filesystem>
+#include <set>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -29,16 +30,24 @@ int main(int argc, char** argv) {
 
     for (; it < args.end() && *it != "-"; it++) {
       if (auto assignment = FdAssignment::Deserialize(*it)) {
-        if (assignment->target() != 2)
         fd_map.push_back(std::move(*assignment));
+        Debug() << "Assignment: " << *it;
       } else {
         Log() << "Invalid fd assignment: " << *it;
         return 1;
       }
     }
 
+    std::set<int> target_fds;
     for (auto& assignment : fd_map) {
+      if (target_fds.find(assignment.fd().get()) != target_fds.end()
+          || target_fds.find(assignment.target()) != target_fds.end()) {
+        Log() << "Duplicate/overwriting fd assignment detected! Aborting...";
+        return 1;
+      }
+
       if (auto fd = assignment.Assign()) {
+        target_fds.insert(fd->get());
         (void) fd->release();
       } else {
         return 1;
