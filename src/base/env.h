@@ -17,6 +17,8 @@ public:
   static std::string_view Require(std::string_view name);
   // Sets the given environment variable.
   static void Set(std::string_view name, std::string_view value, bool overwrite = true);
+  // Tests if the variable is set to a non-empty value.
+  static bool Test(std::string_view name);
 
   static constexpr std::string_view kZypakBin = "ZYPAK_BIN";
   static constexpr std::string_view kZypakLib = "ZYPAK_LIB";

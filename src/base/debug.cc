@@ -56,7 +56,7 @@ NullStream NullStream::instance_;
 DebugContext::DebugContext(): enabled_(false), name_("<unset>") {}
 
 void DebugContext::LoadFromEnvironment() {
-  if (auto env = Env::Get(kDebugEnv); env && !env->empty()) {
+  if (Env::Test(kDebugEnv)) {
     enable();
   }
 }
