@@ -77,6 +77,10 @@ int main(int argc, char** argv) {
   auto preload = (fs::path(libdir) / "libzypak-preload.so").string();
   Env::Set("LD_PRELOAD", preload);
 
+  Env::Set("SBX_USER_NS", "1");
+  Env::Set("SBX_PID_NS", "1");
+  Env::Set("SBX_NET_NS", "1");
+
   std::vector<const char*> c_argv;
   c_argv.reserve(command.size() + 1);
 
