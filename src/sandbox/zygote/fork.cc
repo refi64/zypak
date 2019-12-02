@@ -94,7 +94,9 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
 
   constexpr std::string_view kDisableSandboxEnv = "ZYPAK_DISABLE_SANDBOX";
   if (!Env::Test(kDisableSandboxEnv)) {
-    if (std::find(args.begin(), args.end(), "--type=gpu-process") == args.end()) {
+    constexpr std::string_view kAllowGpuEnv = "ZYPAK_ALLOW_GPU";
+    if (std::find(args.begin(), args.end(), "--type=gpu-process") == args.end()
+        || Env::Test(kAllowGpuEnv)) {
       spawn_args.push_back("--sandbox");
     }
   }
