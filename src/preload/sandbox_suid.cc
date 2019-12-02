@@ -5,6 +5,7 @@
 
 #include "base/base.h"
 #include "declare_override.h"
+#include "sandbox_path.h"
 
 #include <sys/stat.h>
 
@@ -14,9 +15,12 @@ DECLARE_OVERRIDE(int, __xstat64, int ver, const char* path, struct stat64* buf) 
   auto original = LoadOriginal();
 
   int result = original(ver, path, buf);
-  if (std::string_view(path).ends_with("/chrome-sandbox")) {
+  if (SandboxPath::instance()->sandbox_path().empty()
+      && SandboxPath::LooksLikeSandboxPath(path)) {
     buf->st_uid = 0;
     buf->st_mode |= S_ISUID;
+
+    SandboxPath::instance()->set_sandbox_path(path);
   }
 
   return result;

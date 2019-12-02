@@ -24,6 +24,7 @@ preload_LIBS := -ldl
 preload_SOURCES := \
 	bwrap_pid.cc \
 	exec_zypak_sandbox.cc \
+	sandbox_path.cc \
 	sandbox_suid.cc \
 
 $(call build_shlib,preload)

@@ -4,7 +4,9 @@
 // found in the LICENSE file.
 
 #include "base/base.h"
+#include "base/env.h"
 #include "declare_override.h"
+#include "sandbox_path.h"
 
 // If exec is run, make sure it runs the zypak-provided sandbox binary instead of the normal
 // Chrome one.
@@ -12,7 +14,7 @@
 DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
   auto original = LoadOriginal();
 
-  if (std::string_view(file).ends_with("/chrome-sandbox")) {
+  if (file == SandboxPath::instance()->sandbox_path()) {
     file = "zypak-sandbox";
   }
 
