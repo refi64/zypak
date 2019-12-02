@@ -87,6 +87,11 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
   spawn_args.push_back("flatpak-spawn");
   spawn_args.push_back("--watch-bus");
 
+  constexpr std::string_view kAllowNetworkEnv = "ZYPAK_ALLOW_NETWORK";
+  if (!Env::Test(kAllowNetworkEnv)) {
+    spawn_args.push_back("--no-network");
+  }
+
   constexpr std::string_view kDisableSandboxEnv = "ZYPAK_DISABLE_SANDBOX";
   if (!Env::Test(kDisableSandboxEnv)) {
     if (std::find(args.begin(), args.end(), "--type=gpu-process") == args.end()) {
