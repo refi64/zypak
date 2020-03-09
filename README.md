@@ -11,8 +11,15 @@ This requires your Flatpak to be using:
 - `org.electronjs.Electron2.BaseApp` as your base app. Recent releases include Zypak
   built-in.
 
-Now, instead of running your Electron binary directory, call it via
+Now, instead of running your Electron binary directly, call it via
 `zypak-wrapper PATH/TO/MY/ELECTRON/BINARY`.
+
+## Common problems
+
+If there is no `chrome-sandbox` binary in the Electron app's folder (e.g. it
+was removed so that the namespace sandbox would be exclusively used), you need
+to create a stub one. Just `touch chrome-sandbox && chmod +x chrome-sandbox`,
+and everything should work.
 
 ## Using a different version
 
