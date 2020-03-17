@@ -12,8 +12,8 @@
 namespace {
 
 class ReapTimerHandler {
-public:
-  ReapTimerHandler(pid_t child_pid): child_pid_(child_pid) {}
+ public:
+  ReapTimerHandler(pid_t child_pid) : child_pid_(child_pid) {}
 
   void AddToLoop(Epoll* ep) {
     constexpr int kSecondsToWaitForDeath = 2;
@@ -40,12 +40,12 @@ public:
     return true;
   }
 
-private:
+ private:
   pid_t child_pid_;
   bool sent_sigkill_ = false;
 };
 
-}
+} // namespace
 
 void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader) {
   int child_pid;

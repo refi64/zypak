@@ -17,6 +17,7 @@
 
 #include <nickle.h>
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <signal.h>
@@ -77,7 +78,8 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
   auto bindir = Env::Require("ZYPAK_BIN");
   auto libdir = Env::Require("ZYPAK_LIB");
 
-  // Since /proc/self/exe now refers to zypak-sandbox rather than Chrome, rewrite it.
+  // Since /proc/self/exe now refers to zypak-sandbox rather than Chrome,
+  // rewrite it.
   if (args[0] == "/proc/self/exe") {
     auto caller_path = fs::read_symlink(fs::path("/proc") / std::to_string(getppid()) / "exe");
     args[0] = caller_path.string();
@@ -95,8 +97,8 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
   constexpr std::string_view kDisableSandboxEnv = "ZYPAK_DISABLE_SANDBOX";
   if (!Env::Test(kDisableSandboxEnv)) {
     constexpr std::string_view kAllowGpuEnv = "ZYPAK_ALLOW_GPU";
-    if (std::find(args.begin(), args.end(), "--type=gpu-process") == args.end()
-        || Env::Test(kAllowGpuEnv)) {
+    if (std::find(args.begin(), args.end(), "--type=gpu-process") == args.end() ||
+        Env::Test(kAllowGpuEnv)) {
       spawn_args.push_back("--sandbox");
     }
   }
@@ -168,8 +170,8 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
 
   std::vector<std::string> args;
 
-  if (!reader->Read<nickle::codecs::String>(&process_type)
-      || !reader->Read<nickle::codecs::Int>(&argc)) {
+  if (!reader->Read<nickle::codecs::String>(&process_type) ||
+      !reader->Read<nickle::codecs::Int>(&argc)) {
     Log() << "Failed to read fork process type and argc";
     return {};
   }
@@ -211,8 +213,8 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
       return {};
     }
 
-    // The Zygote is given a Key rather than a file descriptor; it must be added to the base
-    // descriptor to get a proper FD.
+    // The Zygote is given a Key rather than a file descriptor; it must be added
+    // to the base descriptor to get a proper FD.
     constexpr int kBaseDescriptor = 3;
     int desired_fd = key + kBaseDescriptor;
 

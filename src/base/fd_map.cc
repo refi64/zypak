@@ -3,8 +3,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "debug.h"
 #include "fd_map.h"
+#include "debug.h"
 
 std::optional<unique_fd> FdAssignment::Assign() {
   ZYPAK_ASSERT(!fd_.invalid());

@@ -40,15 +40,15 @@ int main(int argc, char** argv) {
 
     std::set<int> target_fds;
     for (auto& assignment : fd_map) {
-      if (target_fds.find(assignment.fd().get()) != target_fds.end()
-          || target_fds.find(assignment.target()) != target_fds.end()) {
+      if (target_fds.find(assignment.fd().get()) != target_fds.end() ||
+          target_fds.find(assignment.target()) != target_fds.end()) {
         Log() << "Duplicate/overwriting fd assignment detected! Aborting...";
         return 1;
       }
 
       if (auto fd = assignment.Assign()) {
         target_fds.insert(fd->get());
-        (void) fd->release();
+        (void)fd->release();
       } else {
         return 1;
       }

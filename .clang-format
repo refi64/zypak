@@ -1,0 +1,4 @@
+AccessModifierOffset: -1
+AlwaysBreakTemplateDeclarations: true
+ColumnLimit: 100
+PointerAlignment: Left

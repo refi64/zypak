@@ -7,13 +7,13 @@
 #include "env.h"
 
 #include <errno.h>
-#include <ext/stdio_filebuf.h>  // libstdc++-only
+#include <ext/stdio_filebuf.h> // libstdc++-only
 #include <iostream>
 #include <string.h>
 #include <unistd.h>
 
-debug_detail::LogStream::LogStream(std::ostream* os, int print_errno):
-    std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {
+debug_detail::LogStream::LogStream(std::ostream* os, int print_errno)
+    : std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {
   *os_ << "[fake-sandbox: " << DebugContext::instance()->name() << "] ";
 }
 
@@ -29,19 +29,15 @@ debug_detail::LogStream::~LogStream() {
 namespace {
 
 class NullStream : public std::ostream {
-public:
-  NullStream(): std::ostream(&nullbuf_) {}
+ public:
+  NullStream() : std::ostream(&nullbuf_) {}
 
-  static NullStream* instance() {
-    return &instance_;
-  }
+  static NullStream* instance() { return &instance_; }
 
-private:
+ private:
   class NullBuffer : public std::streambuf {
-  public:
-    int overflow(int c) override {
-      return c;
-    }
+   public:
+    int overflow(int c) override { return c; }
   };
 
   NullBuffer nullbuf_;
@@ -49,11 +45,11 @@ private:
   static NullStream instance_;
 };
 
-}  // namespace
+} // namespace
 
 NullStream NullStream::instance_;
 
-DebugContext::DebugContext(): enabled_(false), name_("<unset>") {}
+DebugContext::DebugContext() : enabled_(false), name_("<unset>") {}
 
 void DebugContext::LoadFromEnvironment() {
   if (Env::Test(kDebugEnv)) {
@@ -61,37 +57,23 @@ void DebugContext::LoadFromEnvironment() {
   }
 }
 
-bool DebugContext::enabled() const {
-  return enabled_;
-}
+bool DebugContext::enabled() const { return enabled_; }
 
-void DebugContext::enable() {
-  enabled_ = true;
-}
+void DebugContext::enable() { enabled_ = true; }
 
-std::string_view DebugContext::name() const {
-  return name_;
-}
+std::string_view DebugContext::name() const { return name_; }
 
-void DebugContext::set_name(std::string_view name) {
-  name_ = name;
-}
+void DebugContext::set_name(std::string_view name) { name_ = name; }
 
-DebugContext* DebugContext::instance() {
-  return &instance_;
-}
+DebugContext* DebugContext::instance() { return &instance_; }
 
 DebugContext DebugContext::instance_;
 
-debug_detail::LogStream Log() {
-  return debug_detail::LogStream(&std::cerr);
-}
+debug_detail::LogStream Log() { return debug_detail::LogStream(&std::cerr); }
 
-debug_detail::LogStream Errno() {
-  return debug_detail::LogStream(&std::cerr, true);
-}
+debug_detail::LogStream Errno() { return debug_detail::LogStream(&std::cerr, true); }
 
 debug_detail::LogStream Debug() {
   return DebugContext::instance()->enabled() ? Log()
-          : debug_detail::LogStream(NullStream::instance());
+                                             : debug_detail::LogStream(NullStream::instance());
 }

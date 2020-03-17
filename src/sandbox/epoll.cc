@@ -3,9 +3,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "epoll.h"
 #include "base/base.h"
 #include "base/debug.h"
-#include "epoll.h"
 
 #include <array>
 #include <cstring>
@@ -23,7 +23,7 @@ std::optional<Epoll> Epoll::Create() {
   return Epoll(std::move(epfd));
 }
 
-Epoll::Epoll(unique_fd epfd): epfd_(std::move(epfd)) {}
+Epoll::Epoll(unique_fd epfd) : epfd_(std::move(epfd)) {}
 
 Epoll::~Epoll() {
   for (const auto& [fd, data] : fd_data_) {

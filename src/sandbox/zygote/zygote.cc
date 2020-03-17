@@ -100,12 +100,12 @@ bool RunZygote() {
 
   std::set<int> children;
 
-  if (!ep.AddFd(kZygoteHostFd,
-                std::bind(HandleZygoteMessage, &children, std::placeholders::_1))) {
+  if (!ep.AddFd(kZygoteHostFd, std::bind(HandleZygoteMessage, &children, std::placeholders::_1))) {
     return false;
   }
 
-  while (ep.RunIteration());
+  while (ep.RunIteration())
+    ;
   Log() << "Quitting Zygote...";
   return false;
 }

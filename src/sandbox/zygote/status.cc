@@ -28,8 +28,8 @@ void HandleTerminationStatusRequest(std::set<pid_t>* children, nickle::Reader* r
   bool known_dead;
   int child_pid;
 
-  if (!reader->Read<nickle::codecs::Bool>(&known_dead)
-      || !reader->Read<nickle::codecs::Int>(&child_pid)) {
+  if (!reader->Read<nickle::codecs::Bool>(&known_dead) ||
+      !reader->Read<nickle::codecs::Int>(&child_pid)) {
     Log() << "Failed to read termination status arguments";
     return;
   }
@@ -96,17 +96,13 @@ void HandleTerminationStatusRequest(std::set<pid_t>* children, nickle::Reader* r
 void HandleSandboxStatusRequest() {
   Debug() << "Sandbox status request";
 
-  constexpr int kFlagSUID  = 1 << 0,
-                kFlagPidNS = 1 << 1,
-                kFlagNetNS = 1 << 2,
-                kBPF       = 1 << 3,
+  constexpr int kFlagSUID = 1 << 0, kFlagPidNS = 1 << 1, kFlagNetNS = 1 << 2, kBPF = 1 << 3,
                 /* kYama      = 1 << 4, */
-                kBPFTsync  = 1 << 5;
+      kBPFTsync = 1 << 5;
 
   // XXX
   int flags = kFlagSUID | kFlagPidNS | kFlagNetNS | kBPF | kBPFTsync;
-  if (!Socket::Write(kZygoteHostFd, reinterpret_cast<std::byte*>(&flags), sizeof(flags),
-                     nullptr)) {
+  if (!Socket::Write(kZygoteHostFd, reinterpret_cast<std::byte*>(&flags), sizeof(flags), nullptr)) {
     Errno() << "Failed to write sandbox status";
   }
 }

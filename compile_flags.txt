@@ -1,0 +1,6 @@
+-xc++
+-Inickle
+-Isrc
+-std=c++17
+-Wall
+-Werror

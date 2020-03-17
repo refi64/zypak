@@ -5,24 +5,21 @@
 
 #pragma once
 
+#include <algorithm>
 #include <unistd.h>
 
 // An owned file descriptor, closed on object destruction.
 class unique_fd {
-public:
+ public:
   static constexpr int kInvalidFd = -1;
 
   unique_fd() {}
-  unique_fd(int fd): fd_(fd) {}
+  unique_fd(int fd) : fd_(fd) {}
 
-  unique_fd(const unique_fd& other)=delete;
-  unique_fd(unique_fd&& other): unique_fd() {
-    std::swap(fd_, other.fd_);
-  }
+  unique_fd(const unique_fd& other) = delete;
+  unique_fd(unique_fd&& other) : unique_fd() { std::swap(fd_, other.fd_); }
 
-  ~unique_fd() {
-    reset();
-  }
+  ~unique_fd() { reset(); }
 
   bool invalid() const { return fd_ == kInvalidFd; }
   int get() const { return fd_; }
@@ -39,6 +36,6 @@ public:
     }
   }
 
-private:
+ private:
   int fd_ = kInvalidFd;
 };

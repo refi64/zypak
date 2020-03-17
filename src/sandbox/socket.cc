@@ -3,8 +3,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/debug.h"
 #include "socket.h"
+#include "base/debug.h"
 
 #include <cstring>
 #include <memory>
@@ -13,15 +13,15 @@
 namespace {
 
 class ControlBufferSpace {
-public:
-  constexpr ControlBufferSpace(int nfds): fd_buffer_size(nfds * sizeof(int)) {}
+ public:
+  constexpr ControlBufferSpace(int nfds) : fd_buffer_size(nfds * sizeof(int)) {}
 
   constexpr size_t ctl_buffer_size() const { return CMSG_SPACE(fd_buffer_size); }
   static constexpr size_t ucred_size() { return CMSG_SPACE(sizeof(struct ucred)); }
   constexpr size_t ctl_buffer_size_with_ucred() const { return ctl_buffer_size() + ucred_size(); }
   constexpr size_t cmsg_len() const { return CMSG_LEN(fd_buffer_size); }
 
-private:
+ private:
   size_t fd_buffer_size;
 };
 
@@ -29,7 +29,7 @@ private:
 
 /*static*/
 ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
-                  std::vector<unique_fd>* fds /*= nullptr*/) {
+                     std::vector<unique_fd>* fds /*= nullptr*/) {
   ZYPAK_ASSERT(buffer != nullptr);
 
   struct msghdr msg;
@@ -52,7 +52,7 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
   }
 
   if (msg.msg_controllen > 0 && fds != nullptr) {
-    for (struct cmsghdr *cmsg  = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
+    for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
          cmsg = CMSG_NXTHDR(&msg, cmsg)) {
       if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
         size_t cmsg_size = cmsg->cmsg_len - CMSG_LEN(0);
@@ -122,6 +122,6 @@ bool Socket::Write(int fd, const std::vector<std::byte>& buffer,
 /*static*/
 bool Socket::Write(int fd, std::string_view buffer, const std::vector<int>* fds /*= nullptr*/) {
   return Write(fd, reinterpret_cast<const std::byte*>(buffer.data()),
-               buffer.size() + 1,  // include the null terminator
+               buffer.size() + 1, // include the null terminator
                fds);
 }

@@ -13,9 +13,9 @@
 
 // A C++-friendly wrapper over the epoll APIs.
 class Epoll {
-public:
-  Epoll(Epoll& other)=delete;
-  Epoll(Epoll&& other)=default;
+ public:
+  Epoll(const Epoll& other) = delete;
+  Epoll(Epoll&& other) = default;
   ~Epoll();
 
   static std::optional<Epoll> Create();
@@ -23,8 +23,8 @@ public:
   using Handler = std::function<bool(Epoll*)>;
 
   class Id {
-  private:
-    Id(int fd): fd(fd) {}
+   private:
+    Id(int fd) : fd(fd) {}
     int fd;
     friend class Epoll;
   };
@@ -44,7 +44,7 @@ public:
   // Run one iteration of the event loop.
   bool RunIteration();
 
-private:
+ private:
   Epoll(unique_fd epfd);
 
   unique_fd epfd_;
