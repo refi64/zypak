@@ -6,80 +6,193 @@
 // zypak-helper is called by zypak-sandbox and is responsible for setting up the file descriptors
 // and launching the target process.
 
+#include <filesystem>
+#include <set>
+#include <variant>
+#include <vector>
+
 #include "base/base.h"
 #include "base/debug.h"
 #include "base/env.h"
 #include "base/fd_map.h"
+#include "base/socket.h"
 #include "base/str_util.h"
+#include "dbus/bus.h"
+#include "dbus/flatpak_portal_proxy.h"
 
-#include <filesystem>
-#include <set>
-#include <vector>
+using namespace zypak;
 
 namespace fs = std::filesystem;
+
+using ArgsView = std::vector<std::string_view>;
+
+constexpr std::string_view kSandboxHelperFdVar = "SBX_D";
+constexpr std::string_view kSandboxHelperPidVar = "SBX_HELPER_PID";
+
+void DetermineZygoteStrategy() {
+  if (auto spawn_strategy = Env::Get(Env::kZypakZygoteStrategySpawn)) {
+    Log() << "Using spawn strategy test " << *spawn_strategy << " as set by environment";
+    return;
+  }
+
+  constexpr std::uint32_t kMinPortalSupportingSpawnStarted = 4;
+
+  dbus::Bus* bus = dbus::Bus::Acquire();
+  ZYPAK_ASSERT(bus);
+
+  dbus::FlatpakPortalProxy portal(bus);
+  if (auto opt_version = portal.GetVersionBlocking()) {
+    if (*opt_version >= kMinPortalSupportingSpawnStarted) {
+      Debug() << "Portal v4 is available, using spawn strategy";
+
+      Env::Set(Env::kZypakZygoteStrategySpawn, "1");
+    } else {
+      Debug() << "Portal v4 is not available, using mimic strategy";
+    }
+  } else {
+    Log() << "WARNING: Unknown version, falling back to mimic Zygote strategy";
+  }
+
+  bus->Shutdown();
+}
+
+bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
+  FdMap fd_map;
+
+  for (; *it < last && **it != "-"; (*it)++) {
+    if (auto assignment = FdAssignment::Deserialize(**it)) {
+      fd_map.push_back(std::move(*assignment));
+      Debug() << "Assignment: " << **it;
+    } else {
+      Log() << "Invalid fd assignment: " << **it;
+      return false;
+    }
+  }
+
+  if (*it == last) {
+    Log() << "FD map ended too soon";
+    return false;
+  }
+
+  (*it)++;
+
+  std::set<int> target_fds;
+  for (auto& assignment : fd_map) {
+    if (target_fds.find(assignment.fd().get()) != target_fds.end() ||
+        target_fds.find(assignment.target()) != target_fds.end()) {
+      Log() << "Duplicate/overwriting fd assignment detected! Aborting...";
+      return false;
+    }
+
+    if (auto fd = assignment.Assign()) {
+      target_fds.insert(fd->get());
+      (void)fd->release();
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool StubSandboxHelper(unique_fd fd) {
+  Debug() << "Waiting for chroot request";
+
+  std::array<std::byte, 1> msg;
+  if (ssize_t bytes_read = Socket::Read(fd.get(), &msg); bytes_read == -1) {
+    Errno() << "Failed to read from chroot message pipe";
+    return false;
+  }
+
+  if (msg[0] == static_cast<std::byte>(0)) {
+    Log() << "Chroot pipe is empty";
+    return false;
+  } else if (msg[0] != static_cast<std::byte>('C')) {
+    Log() << "Unexpected chroot pipe message: " << static_cast<int>(msg[0]);
+    return false;
+  }
+
+  Debug() << "Sending chroot reply";
+
+  std::array<std::byte, 1> reply{static_cast<std::byte>('O')};
+  if (!Socket::Write(fd.get(), reply)) {
+    Errno() << "Failed to send chroot reply";
+    return false;
+  }
+
+  Debug() << "Sent chroot reply";
+  return true;
+}
 
 int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-helper");
   DebugContext::instance()->LoadFromEnvironment();
 
-  std::vector<std::string_view> args(argv, argv + argc);
-  auto it = args.begin() + 1;
-
-  {
-    FdMap fd_map;
-
-    for (; it < args.end() && *it != "-"; it++) {
-      if (auto assignment = FdAssignment::Deserialize(*it)) {
-        fd_map.push_back(std::move(*assignment));
-        Debug() << "Assignment: " << *it;
-      } else {
-        Log() << "Invalid fd assignment: " << *it;
-        return 1;
-      }
-    }
-
-    std::set<int> target_fds;
-    for (auto& assignment : fd_map) {
-      if (target_fds.find(assignment.fd().get()) != target_fds.end() ||
-          target_fds.find(assignment.target()) != target_fds.end()) {
-        Log() << "Duplicate/overwriting fd assignment detected! Aborting...";
-        return 1;
-      }
-
-      if (auto fd = assignment.Assign()) {
-        target_fds.insert(fd->get());
-        (void)fd->release();
-      } else {
-        return 1;
-      }
-    }
-  }
+  ArgsView args(argv + 1, argv + argc);
+  auto it = args.begin();
 
   if (it == args.end()) {
-    Log() << "too few arguments";
+    Log() << "usage: zypak-helper [host|child] [-s] ....";
     return 1;
   }
 
-  it++;
+  std::string_view mode = *it++;
 
-  std::vector<std::string_view> command(it, args.end());
+  bool enable_strace = false;
+  if (it != args.end() && *it == "-s") {
+    enable_strace = true;
+    it++;
+  }
 
-  // Uncomment to debug via strace.
-  /* auto i = command.insert(command.begin(), "strace"); */
-  /* command.insert(++i, "-f"); */
+  if (mode == "host") {
+    DetermineZygoteStrategy();
+  } else if (mode == "child") {
+    if (!ApplyFdMapFromArgs(&it, args.end())) {
+      return 1;
+    }
+  } else {
+    Log() << "Invalid mode: " << mode;
+    return 1;
+  }
 
-  auto bindir = Env::Require("ZYPAK_BIN");
-  auto libdir = Env::Require("ZYPAK_LIB");
+  if (it == args.end()) {
+    Log() << "Expected a command";
+    return 1;
+  }
 
-  auto path = std::string(Env::Require("PATH")) + ":" + bindir.data();
+  ArgsView command(it, args.end());
+
+  auto bindir = Env::Require(Env::kZypakBin);
+  auto libdir = Env::Require(Env::kZypakLib);
+
+  auto path = std::string(bindir) + ":" + std::string(Env::Require("PATH"));
   Env::Set("PATH", path);
 
-  auto preload = (fs::path(libdir) / "libzypak-preload.so").string();
-  Env::Set("LD_PRELOAD", preload);
+  std::vector<std::string> preload_names;
+  std::vector<std::string> preload_libs;
 
-  Env::Set("SBX_USER_NS", "1");
-  Env::Set("SBX_PID_NS", "1");
-  Env::Set("SBX_NET_NS", "1");
+  preload_names.push_back(mode.data());
+  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+    preload_names.push_back(std::string(mode) + "-spawn-strategy");
+  }
+
+  for (std::string_view name : preload_names) {
+    fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name.data() + ".so");
+    preload_libs.push_back(path.string());
+  }
+
+  auto preload = Join(preload_libs.begin(), preload_libs.end(), ":");
+  Debug() << "Preload is: " << preload;
+
+  if (enable_strace) {
+    auto strace_it = command.insert(command.begin(), "strace");
+    strace_it = command.insert(strace_it + 1, "-f");
+    strace_it = command.insert(strace_it + 1, "-E");
+    // XXX
+    strace_it = command.insert(strace_it + 1, (new std::string("LD_PRELOAD="s + preload))->data());
+  } else {
+    Env::Set("LD_PRELOAD", preload);
+  }
 
   std::vector<const char*> c_argv;
   c_argv.reserve(command.size() + 1);
@@ -91,6 +204,33 @@ int main(int argc, char** argv) {
   c_argv.push_back(nullptr);
 
   Debug() << Join(command.begin(), command.end());
+
+  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+    auto pair = Socket::OpenSocketPair();
+    if (!pair) {
+      return 1;
+    }
+
+    auto [parent_end, helper_end] = std::move(*pair);
+
+    pid_t helper = fork();
+    if (helper == -1) {
+      Errno() << "Helper fork failed";
+      return 1;
+    } else if (helper == 0) {
+      if (!StubSandboxHelper(std::move(helper_end))) {
+        return 1;
+      }
+
+      return 0;
+    } else {
+      std::string fd_s = std::to_string(parent_end.release());
+      std::string helper_s = std::to_string(helper);
+
+      Env::Set(kSandboxHelperFdVar, "");
+      Env::Set(kSandboxHelperPidVar, helper_s);
+    }
+  }
 
   execvp(c_argv[0], const_cast<char* const*>(c_argv.data()));
   Errno() << "exec failed for " << Join(command.begin(), command.end());

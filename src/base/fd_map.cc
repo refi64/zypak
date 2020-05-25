@@ -3,8 +3,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fd_map.h"
-#include "debug.h"
+#include "base/fd_map.h"
+
+#include "base/debug.h"
+
+namespace zypak {
 
 std::optional<unique_fd> FdAssignment::Assign() {
   ZYPAK_ASSERT(!fd_.invalid());
@@ -26,7 +29,7 @@ std::string FdAssignment::Serialize() const {
   return std::to_string(target_) + "=" + std::to_string(fd_.get());
 }
 
-/*static*/
+// static
 std::optional<FdAssignment> FdAssignment::Deserialize(std::string_view data) {
   std::string::size_type eq = data.find('=');
   if (eq == std::string::npos) {
@@ -41,3 +44,5 @@ std::optional<FdAssignment> FdAssignment::Deserialize(std::string_view data) {
 
   return {FdAssignment(unique_fd(fd), target)};
 }
+
+}  // namespace zypak

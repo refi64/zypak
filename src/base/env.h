@@ -5,12 +5,14 @@
 
 #pragma once
 
-#include "base/base.h"
-
 #include <optional>
 
+#include "base/base.h"
+
+namespace zypak {
+
 class Env {
-public:
+ public:
   // Get the requested environment variable, returning an empty optional on failure.
   static std::optional<std::string_view> Get(std::string_view name);
   // Get the requested environment variable, aborting on failure.
@@ -22,4 +24,12 @@ public:
 
   static constexpr std::string_view kZypakBin = "ZYPAK_BIN";
   static constexpr std::string_view kZypakLib = "ZYPAK_LIB";
+  static constexpr std::string_view kZypakZygoteStrategySpawn = "ZYPAK_ZYGOTE_STRATEGY_SPAWN";
+
+  static constexpr std::string_view kZypakSettingEnableDebug = "ZYPAK_DEBUG";
+  static constexpr std::string_view kZypakSettingAllowNetwork = "ZYPAK_ALLOW_NETWORK";
+  static constexpr std::string_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
+  static constexpr std::string_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
 };
+
+}  // namespace zypak

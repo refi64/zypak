@@ -7,6 +7,8 @@
 
 #include "base/base.h"
 
+namespace zypak {
+
 // Join the items of the iterator by the given delimeter.
 template <typename It>
 std::string Join(It first, It last, std::string_view sep = " ") {
@@ -23,3 +25,5 @@ std::string Join(It first, It last, std::string_view sep = " ") {
 
   return result;
 }
+
+}  // namespace zypak
