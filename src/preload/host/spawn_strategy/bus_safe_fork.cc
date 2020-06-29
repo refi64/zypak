@@ -24,13 +24,29 @@ DECLARE_OVERRIDE(pid_t, fork) {
 
   Log() << "Prepare for fork";
 
+  bus->GetPropertyBlocking<dbus::TypeCode::kInt32>(
+      dbus::FloatingRef("org.freedesktop.portal.Flatpak", "/org/freedesktop/portal/Flatpak",
+                        "org.freedesktop.portal.Flatpak"),
+      "Abc");
+  Debug() << "****** PROPERTY SELECTED 1 ******";
+
   bus->Pause();
+  bus->Resume();
+
+  bus->GetPropertyBlocking<dbus::TypeCode::kInt32>(
+      dbus::FloatingRef("org.freedesktop.portal.Flatpak", "/org/freedesktop/portal/Flatpak",
+                        "org.freedesktop.portal.Flatpak"),
+      "Abc");
+  Debug() << "****** PROPERTY SELECTED 1.5 ******";
+
+  bus->Pause();
+
   pid_t result = original();
 
   if (result == 0) {
     Log() << "Shut down bus in child";
     // Fully shut down the bus in the child. That way, if it is unused, no resources are wasted.
-    bus->Shutdown();
+    // bus->Shutdown();
     // Make sure the supervisor fd won't get closed.
     zypak::preload::block_supervisor_fd_close = true;
     return result;
@@ -39,5 +55,12 @@ DECLARE_OVERRIDE(pid_t, fork) {
   Log() << "Resume bus in parent";
   // In the parent, re-init the bus, regardless of the fork result.
   bus->Resume();
+
+  bus->GetPropertyBlocking<dbus::TypeCode::kInt32>(
+      dbus::FloatingRef("org.freedesktop.portal.Flatpak", "/org/freedesktop/portal/Flatpak",
+                        "org.freedesktop.portal.Flatpak"),
+      "Abc");
+  Debug() << "****** PROPERTY SELECTED 2 ******";
+
   return result;
 }

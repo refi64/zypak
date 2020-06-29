@@ -6,6 +6,7 @@
 
 #include <nickle.h>
 
+#include "base/container_util.h"
 #include "base/debug.h"
 #include "base/fd_map.h"
 #include "base/socket.h"
@@ -15,8 +16,16 @@
 
 namespace zypak::sandbox::spawn_strategy {
 
-bool SpawnLauncherDelegate::Spawn(std::vector<std::string> command, const FdMap& fd_map, EnvMap env,
+bool SpawnLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<std::string> command,
+                                  const FdMap& fd_map, EnvMap env,
                                   Launcher::Flags flags) /*override*/ {
+  std::vector<std::string> full_command;
+
+  // Since we map the descriptors ourselves via the portal API, there's no need for zypak-helper to
+  // adjust them as well.
+  ExtendContainerMove(&full_command, helper.BuildCommandWrapper(FdMap()));
+  ExtendContainerMove(&full_command, std::move(command));
+
   std::optional<unique_fd> request_pipe = OpenSpawnRequest();
   if (!request_pipe) {
     return false;
@@ -26,8 +35,8 @@ bool SpawnLauncherDelegate::Spawn(std::vector<std::string> command, const FdMap&
   nickle::buffers::ContainerBuffer buffer(&target);
   nickle::Writer writer(&buffer);
 
-  ZYPAK_ASSERT(writer.Write<nickle::codecs::UInt32>(command.size()));
-  for (const std::string& item : command) {
+  ZYPAK_ASSERT(writer.Write<nickle::codecs::UInt32>(full_command.size()));
+  for (const std::string& item : full_command) {
     ZYPAK_ASSERT(writer.Write<nickle::codecs::StringView>(item));
   }
 
@@ -43,7 +52,8 @@ bool SpawnLauncherDelegate::Spawn(std::vector<std::string> command, const FdMap&
     ZYPAK_ASSERT(writer.Write<nickle::codecs::StringView>(value));
   }
 
-  int spawn_flags = dbus::FlatpakPortalProxy::kNoSpawnFlags;
+  int spawn_flags = dbus::FlatpakPortalProxy::kSpawnFlags_ExposePids |
+                    dbus::FlatpakPortalProxy::kSpawnFlags_EmitSpawnStarted;
   int sandbox_flags = dbus::FlatpakPortalProxy::SpawnOptions::kNoSandboxFlags;
 
   if (flags & Launcher::kAllowGpu) {
@@ -79,6 +89,7 @@ bool SpawnLauncherDelegate::Spawn(std::vector<std::string> command, const FdMap&
     return false;
   }
 
+  Debug() << "Got supervisor exit message";
   ZYPAK_ASSERT(kZypakSupervisorExitReply == reinterpret_cast<char*>(reply.data()));
 
   return true;

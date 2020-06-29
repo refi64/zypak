@@ -21,13 +21,23 @@ class Launcher {
     kWatchBus = 1 << 3,
   };
 
+  class Helper {
+   public:
+    Helper(std::string helper_path) : helper_path_(std::move(helper_path)) {}
+
+    std::vector<std::string> BuildCommandWrapper(const FdMap& fd_map) const;
+
+   private:
+    std::string helper_path_;
+  };
+
   class Delegate {
    public:
     using EnvMap = std::unordered_map<std::string_view, std::string_view>;
 
     virtual ~Delegate() {}
-    virtual bool Spawn(std::vector<std::string> command, const FdMap& fd_map, EnvMap env,
-                       Flags flags) = 0;
+    virtual bool Spawn(const Helper& helper, std::vector<std::string> command, const FdMap& fd_map,
+                       EnvMap env, Flags flags) = 0;
   };
 
   Launcher(Delegate* delegate) : delegate_(delegate) {}

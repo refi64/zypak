@@ -5,6 +5,7 @@
 
 #include "sandbox/mimic_strategy/mimic_launcher_delegate.h"
 
+#include "base/container_util.h"
 #include "base/debug.h"
 #include "base/socket.h"
 #include "base/str_util.h"
@@ -12,7 +13,8 @@
 
 namespace zypak::sandbox::mimic_strategy {
 
-bool MimicLauncherDelegate::Spawn(std::vector<std::string> command, const FdMap& fd_map, EnvMap env,
+bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<std::string> command,
+                                  const FdMap& fd_map, EnvMap env,
                                   Launcher::Flags flags) /*override*/ {
   std::vector<std::string> spawn_command;
   spawn_command.push_back("flatpak-spawn");
@@ -35,8 +37,8 @@ bool MimicLauncherDelegate::Spawn(std::vector<std::string> command, const FdMap&
     spawn_command.push_back("--forward-fd="s + std::to_string(assignment.fd().get()));
   }
 
-  spawn_command.reserve(spawn_command.size() + command.size());
-  std::move(command.begin(), command.end(), std::back_inserter(spawn_command));
+  ExtendContainerMove(&spawn_command, helper.BuildCommandWrapper(fd_map));
+  ExtendContainerMove(&spawn_command, std::move(command));
 
   pid_t child = fork();
   if (child == -1) {

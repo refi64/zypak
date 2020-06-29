@@ -6,6 +6,9 @@
 // zypak-helper is called by zypak-sandbox and is responsible for setting up the file descriptors
 // and launching the target process.
 
+#include <sys/prctl.h>
+#include <sys/signal.h>
+
 #include <filesystem>
 #include <set>
 #include <variant>
@@ -96,6 +99,10 @@ bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
 }
 
 bool StubSandboxHelper(unique_fd fd) {
+  if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0) == -1) {
+    Errno() << "Warning: Failed to prctl(DEATHSIG)";
+  }
+
   Debug() << "Waiting for chroot request";
 
   std::array<std::byte, 1> msg;
@@ -205,7 +212,7 @@ int main(int argc, char** argv) {
 
   Debug() << Join(command.begin(), command.end());
 
-  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+  if (Env::Test(Env::kZypakZygoteStrategySpawn) && mode == "child") {
     auto pair = Socket::OpenSocketPair();
     if (!pair) {
       return 1;
@@ -227,7 +234,7 @@ int main(int argc, char** argv) {
       std::string fd_s = std::to_string(parent_end.release());
       std::string helper_s = std::to_string(helper);
 
-      Env::Set(kSandboxHelperFdVar, "");
+      Env::Set(kSandboxHelperFdVar, fd_s);
       Env::Set(kSandboxHelperPidVar, helper_s);
     }
   }

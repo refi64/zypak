@@ -37,13 +37,13 @@ void FlatpakPortalProxy::SpawnAsync(std::string_view cwd, std::vector<std::strin
   MessageWriter writer = call.OpenWriter();
 
   writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(cwd.data()),
-                                          cwd.size());
+                                          cwd.size() + 1);  // include null terminator
 
   {
     MessageWriter argv_writer = writer.EnterContainer<TypeCode::kArray>("ay");
     for (const std::string& arg : argv) {
       argv_writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(arg.data()),
-                                                   arg.size());
+                                                   arg.size() + 1);  // include null terminator
     }
   }
 

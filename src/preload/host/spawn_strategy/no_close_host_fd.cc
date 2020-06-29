@@ -21,10 +21,6 @@ DECLARE_OVERRIDE_THROW(int, close, int fd) {
     return 0;
   }
 
-  if (fd == 23) {
-    printf("CLOSE %d %d\n", getpid(), fd);
-  }
-
   // Just use the syscall to avoid tons of latency from indirection.
   return syscall(__NR_close, fd);
 }

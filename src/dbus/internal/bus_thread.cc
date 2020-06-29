@@ -162,6 +162,8 @@ void BusThread::ThreadMain() {
   while (!shutdown_flag_->load()) {
     Debug() << "Pumping bus thread";
 
+    // Don't hold any lock while waiting, otherwise other threads won't be able to touch the bus at
+    // all.
     if (!epoll_.unsafe()->Wait(&events)) {
       Log() << "Epoll wait failed in bus thread! Aborting...";
       abort();
@@ -208,7 +210,7 @@ dbus_bool_t BusThread::HandleDBusWatchAdd(DBusWatch* watch) {
   uint flags = dbus_watch_get_flags(watch);
   ZYPAK_ASSERT(flags & (DBUS_WATCH_READABLE | DBUS_WATCH_WRITABLE));
 
-  Debug() << "D-Bus watch add with flags " << flags;
+  Debug() << "D-Bus watch add " << dbus_watch_get_unix_fd(watch) << " with flags " << flags;
 
   Epoll::Events events = Epoll::Events::Status::kNone;
   if (flags & DBUS_WATCH_READABLE) {
@@ -220,6 +222,9 @@ dbus_bool_t BusThread::HandleDBusWatchAdd(DBusWatch* watch) {
 
   auto ep = epoll_.Acquire();
   auto opt_id = ep->AddFd(fd, events, [watch](Epoll* unsafe_ep, Epoll::Events events) {
+    Debug() << "Incoming events on D-Bus watch " << dbus_watch_get_unix_fd(watch) << ": "
+            << static_cast<int>(events.status());
+
     uint flags = 0;
     ZYPAK_ASSERT(!events.empty());
     if (events.contains(Epoll::Events::Status::kRead)) {
@@ -245,9 +250,12 @@ dbus_bool_t BusThread::HandleDBusWatchAdd(DBusWatch* watch) {
 }
 
 void BusThread::HandleDBusWatchRemove(DBusWatch* watch) {
+  Debug() << "D-Bus watch remove " << dbus_watch_get_unix_fd(watch);
+
   if (auto* id = static_cast<Epoll::Id*>(dbus_watch_get_data(watch))) {
     auto ep = epoll_.Acquire();
     ep->Remove(*id);
+    dbus_watch_set_data(watch, nullptr, nullptr);
   }
 }
 

@@ -13,8 +13,8 @@ class SpawnLauncherDelegate : public Launcher::Delegate {
  public:
   SpawnLauncherDelegate() {}
 
-  bool Spawn(std::vector<std::string> command, const FdMap& fd_map, EnvMap env,
-             Launcher::Flags flags) override;
+  bool Spawn(const Launcher::Helper& helper, std::vector<std::string> command, const FdMap& fd_map,
+             EnvMap env, Launcher::Flags flags) override;
 
  private:
   std::optional<unique_fd> OpenSpawnRequest();

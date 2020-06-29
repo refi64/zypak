@@ -12,6 +12,7 @@
 
 #include "base/singleton.h"
 #include "base/socket.h"
+#include "base/str_util.h"
 #include "base/unique_fd.h"
 #include "dbus/bus_readable_message.h"
 #include "dbus/flatpak_portal_proxy.h"
@@ -41,7 +42,6 @@ bool Supervisor::InitAndAttachToBusThread(dbus::Bus* bus) {
   }
 
   request_fd_ = std::move(supervisor_end);
-  Log() << "***** spawn request fd is " << request_fd_.get();
 
   bus->loop()->Acquire()->AddFd(
       request_fd_.get(), std::bind(&Supervisor::HandleSpawnRequest, this, std::placeholders::_1));
@@ -298,6 +298,8 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
     Log() << "Failed to read spawn and sandbox flags";
     return;
   }
+
+  Debug() << "Got request to run: " << Join(command.begin(), command.end());
 
   dbus::FlatpakPortalProxy::SpawnOptions spawn_options;
   spawn_options.sandbox_flags =

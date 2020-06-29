@@ -64,6 +64,7 @@ class FlatpakPortalProxy {
   FlatpakPortalProxy(Bus* bus = nullptr) : bus_(bus) {}
 
   void AttachToBus(Bus* bus);
+  dbus::Bus* bus() { return bus_; }
 
   std::optional<std::uint32_t> GetVersionBlocking();
   std::optional<Supports> GetSupportsBlocking();

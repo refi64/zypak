@@ -9,6 +9,7 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "base/container_util.h"
 #include "base/debug.h"
 #include "base/env.h"
 
@@ -19,6 +20,21 @@ constexpr std::string_view kSandboxApiValue = "1";
 constexpr std::string_view kSandboxPidNsVar = "SBX_PID_NS";
 constexpr std::string_view kSandboxNetNsVar = "SBX_PID_NS";
 constexpr std::string_view kSandboxNsEnabled = "1";
+
+std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_map) const {
+  std::vector<std::string> wrapper;
+
+  wrapper.push_back(helper_path_);
+  wrapper.push_back("child");
+
+  for (const auto& assignment : fd_map) {
+    wrapper.push_back(assignment.Serialize());
+  }
+
+  wrapper.push_back("-");
+
+  return wrapper;
+}
 
 bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
   int flags = kWatchBus;
@@ -52,21 +68,10 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
   env[kSandboxPidNsVar] = kSandboxNsEnabled;
   env[kSandboxNetNsVar] = kSandboxNsEnabled;
 
-  std::vector<std::string> full_command;
   auto helper_path = std::filesystem::path(bindir.data()) / "zypak-helper";
-  full_command.push_back(helper_path.string());
-  full_command.push_back("child");
+  Helper helper(helper_path.string());
 
-  for (const auto& assignment : fd_map) {
-    full_command.push_back(assignment.Serialize());
-  }
-
-  full_command.push_back("-");
-
-  full_command.reserve(full_command.size() + command.size());
-  std::move(command.begin(), command.end(), std::back_inserter(full_command));
-
-  return delegate_->Spawn(std::move(full_command), fd_map, std::move(env),
+  return delegate_->Spawn(helper, std::move(command), fd_map, std::move(env),
                           static_cast<Flags>(flags));
 }
 
