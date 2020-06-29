@@ -37,7 +37,6 @@ class Socket {
     WriteOptions() {}
 
     const std::vector<int>* fds = nullptr;
-    bool send_pid = false;
   };
 
   static bool Write(int fd, const std::byte* buffer, size_t length, WriteOptions options = {});
@@ -56,6 +55,8 @@ class Socket {
   static std::optional<Pipe> OpenPipe();
 
   static std::optional<std::pair<unique_fd, unique_fd>> OpenSocketPair();
+
+  static bool EnableReceivePid(int fd);
 };
 
 }  // namespace zypak

@@ -30,16 +30,14 @@ class ControlBufferSpace {
   size_t rights_cmsg_len() const { return CMSG_LEN(fd_buffer_size_); }
   size_t ucred_cmsg_len() const { return CMSG_LEN(sizeof(struct ucred)); }
 
+  bool with_ucred() const { return with_ucred_; }
+
  private:
   size_t fd_buffer_size_;
   bool with_ucred_;
 };
 
 size_t GetCMsgSize(struct cmsghdr* cmsg) { return cmsg->cmsg_len - CMSG_LEN(0); }
-
-void NextCMsgHeader(struct msghdr* msg, struct cmsghdr** cmsg) {
-  *cmsg = *cmsg ? CMSG_NXTHDR(msg, *cmsg) : CMSG_FIRSTHDR(msg);
-}
 
 }  // namespace
 
@@ -63,8 +61,12 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size, ReadOptions options
                              /*with_ucred=*/options.pid != nullptr);
 
     ctl_buffer = std::make_unique<std::byte[]>(space.ctl_buffer_size());
-    msg.msg_control = reinterpret_cast<std::byte*>(ctl_buffer.get());
+    msg.msg_control = ctl_buffer.get();
     msg.msg_controllen = space.ctl_buffer_size();
+
+    if (options.pid != nullptr) {
+      *options.pid = -1;
+    }
   }
 
   ssize_t res = HANDLE_EINTR(recvmsg(fd, &msg, 0));
@@ -94,6 +96,7 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size, ReadOptions options
 
           ZYPAK_ASSERT(GetCMsgSize(cmsg) == sizeof(struct ucred));
           struct ucred* cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
+          ZYPAK_ASSERT(cred->pid != 0);
           *options.pid = cred->pid;
         }
       }
@@ -102,6 +105,11 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size, ReadOptions options
 
   if (msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC)) {
     errno = EMSGSIZE;
+    return -1;
+  }
+
+  if (options.pid != nullptr && *options.pid == -1) {
+    errno = ESRCH;
     return -1;
   }
 
@@ -126,37 +134,21 @@ bool Socket::Write(int fd, const std::byte* buffer, size_t size, WriteOptions op
 
   std::unique_ptr<std::byte[]> ctl_buffer;
 
-  if (options.fds != nullptr || options.send_pid) {
+  if (options.fds != nullptr) {
     ControlBufferSpace space(options.fds != nullptr ? options.fds->size() : 0,
-                             /*with_ucred=*/options.send_pid);
+                             /*with_ucred=*/false);
 
     ctl_buffer = std::make_unique<std::byte[]>(space.ctl_buffer_size());
-    msg.msg_control = reinterpret_cast<std::byte*>(ctl_buffer.get());
+    msg.msg_control = ctl_buffer.get();
     msg.msg_controllen = space.ctl_buffer_size();
 
-    struct cmsghdr* cmsg = nullptr;
+    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = space.rights_cmsg_len();
 
-    if (options.fds != nullptr) {
-      NextCMsgHeader(&msg, &cmsg);
-      cmsg->cmsg_level = SOL_SOCKET;
-      cmsg->cmsg_type = SCM_RIGHTS;
-      cmsg->cmsg_len = space.rights_cmsg_len();
-
-      int* it = reinterpret_cast<int*>(CMSG_DATA(cmsg));
-      std::copy(options.fds->begin(), options.fds->end(), it);
-    }
-
-    if (options.send_pid) {
-      NextCMsgHeader(&msg, &cmsg);
-      cmsg->cmsg_level = SOL_SOCKET;
-      cmsg->cmsg_type = SCM_CREDENTIALS;
-      cmsg->cmsg_len = space.ucred_cmsg_len();
-
-      struct ucred* cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
-      cred->uid = getuid();
-      cred->gid = getgid();
-      cred->pid = getpid();
-    }
+    int* it = reinterpret_cast<int*>(CMSG_DATA(cmsg));
+    std::copy(options.fds->begin(), options.fds->end(), it);
   }
 
   return HANDLE_EINTR(sendmsg(fd, &msg, MSG_NOSIGNAL)) == size;
@@ -194,6 +186,17 @@ std::optional<std::pair<unique_fd, unique_fd>> Socket::OpenSocketPair() {
   }
 
   return std::make_pair(unique_fd(fds[0]), unique_fd(fds[1]));
+}
+
+// static
+bool Socket::EnableReceivePid(int fd) {
+  int value = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &value, sizeof(value)) == -1) {
+    Errno() << "Failed to enable SO_PASSCRED";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace zypak

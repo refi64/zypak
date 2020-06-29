@@ -36,6 +36,11 @@ bool Supervisor::InitAndAttachToBusThread(dbus::Bus* bus) {
 
   auto [supervisor_end, child_end] = std::move(*request_pair);
 
+  if (!Socket::EnableReceivePid(supervisor_end.get())) {
+    Log() << "Cannot enable pid receival on supervisor fd";
+    return false;
+  }
+
   if (dup2(child_end.get(), kZypakSupervisorFd) == -1) {
     Errno() << "Failed to dup onto supervisor fd";
     return false;
@@ -62,10 +67,12 @@ Supervisor::Result Supervisor::GetExitStatus(pid_t stub_pid, int* status) {
     auto stub_pids_data = stub_pids_data_.Acquire(GuardReleaseNotify::kAll);
     data = FindStubPidData(StubPid(stub_pid), *stub_pids_data);
     if (data == nullptr) {
+      Debug() << "Could not find stub pid data, assuming dead for " << stub_pid;
       return Result::kNotFound;
     }
 
     if (data->exit_status == -1) {
+      Debug() << "Still running, try later for " << stub_pid;
       return Result::kTryLater;
     }
 
@@ -87,6 +94,7 @@ Supervisor::Result Supervisor::WaitForExitStatus(pid_t stub_pid, int* status) {
         });
 
     if (data == nullptr) {
+      Debug() << "Could not find stub pid data, assuming dead for " << stub_pid;
       return Result::kNotFound;
     }
 
@@ -155,6 +163,8 @@ Supervisor::FindStubPidData(StubPid stub,
 }
 
 void Supervisor::ReapProcess(StubPid stub, StubPidData* data, int* status) {
+  Debug() << "Reaping " << stub.pid;
+
   *status = data->exit_status;
 
   if (!Socket::Write(data->notify_exit.get(), kZypakSupervisorExitReply)) {
@@ -177,6 +187,7 @@ void Supervisor::HandleSpawnStarted(dbus::FlatpakPortalProxy::SpawnStartedMessag
     return;
   }
 
+  Debug() << "Marking as started: " << message.external_pid << ' ' << message.internal_pid;
   data->internal = message.internal_pid;
 }
 
@@ -193,6 +204,7 @@ void Supervisor::HandleSpawnExited(dbus::FlatpakPortalProxy::SpawnExitedMessage 
     return;
   }
 
+  Debug() << "Marking as dead: " << message.external_pid;
   data->exit_status = message.exit_status;
 }
 
@@ -202,7 +214,7 @@ bool Supervisor::HandleSpawnRequest(Epoll* unsafe_ep) {
   std::vector<unique_fd> fds;
   pid_t pid;
 
-  Log() << "Ready to read spawn request";
+  Debug() << "Ready to read spawn request";
 
   Socket::ReadOptions options;
   options.fds = &fds;
@@ -309,6 +321,8 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
   auto it = stub_pids_data->emplace(stub_pid, StubPidData{}).first;
   it->second.notify_exit = std::move(fd);
 
+  Debug() << "Starting as " << stub_pid;
+
   portal_.SpawnAsync(
       kSpawnDirectory, std::move(command), fd_map, std::move(env),
       static_cast<dbus::FlatpakPortalProxy::SpawnFlags>(spawn_flags), spawn_options,
@@ -333,6 +347,9 @@ void Supervisor::HandleSpawnReply(pid_t stub_pid, dbus::FlatpakPortalProxy::Spaw
   }
 
   pid_t external_pid = std::get<std::uint32_t>(reply);
+
+  Debug() << "Initially spawned " << external_pid << " as " << stub_pid;
+
   it->second.external = external_pid;
   external_to_stub_pids_.emplace(external_pid, stub_pid);
 }

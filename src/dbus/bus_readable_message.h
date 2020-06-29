@@ -21,8 +21,9 @@ class MessageReader {
   }
 
   bool done() const {
-    return dbus_message_iter_get_arg_type(const_cast<DBusMessageIter*>(&iter_)) !=
-           DBUS_TYPE_INVALID;
+    return dbus_message_iter_has_next(const_cast<DBusMessageIter*>(&iter_)) &&
+           dbus_message_iter_get_arg_type(const_cast<DBusMessageIter*>(&iter_)) !=
+               DBUS_TYPE_INVALID;
   }
 
   template <TypeCode Code>
@@ -38,6 +39,7 @@ class MessageReader {
     dbus_message_iter_get_basic(&iter_, &internal);
     *dest = BusTypeTraits<Code>::ConvertToExternal(internal);
 
+    dbus_message_iter_next(&iter_);
     return true;
   }
 

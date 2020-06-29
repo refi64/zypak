@@ -103,12 +103,12 @@ std::optional<unique_fd> SpawnLauncherDelegate::OpenSpawnRequest() {
   }
 
   auto [our_end, supervisor_end] = std::move(*sockets);
+
   std::vector<int> spawn_request_fds;
   spawn_request_fds.push_back(supervisor_end.get());
 
   Socket::WriteOptions options;
   options.fds = &spawn_request_fds;
-  options.send_pid = true;
   if (!Socket::Write(kZypakSupervisorFd, kZypakSupervisorSpawnRequest, options)) {
     Errno() << "Failed to send spawn request to supervisor";
     return {};

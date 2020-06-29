@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Pretend that /proc/self/exe is accessible until the chroot helper message is sent.
+// Pretend that /proc/self/exe isn't accessible due to sandboxing.
 
 #include <errno.h>
 #include <fcntl.h>
@@ -17,7 +17,6 @@
 namespace {
 
 constexpr std::string_view kSandboxTestPath = "/proc/self/exe";
-bool pretend_sandbox_active = false;
 
 }  // namespace
 
@@ -35,12 +34,8 @@ DECLARE_OVERRIDE_THROW(int, open64, const char* path, int flags, ...) {
   }
 
   if (path == kSandboxTestPath) {
-    if (pretend_sandbox_active) {
-      errno = ENOENT;
-      return -1;
-    }
-
-    pretend_sandbox_active = true;
+    errno = ENOENT;
+    return -1;
   }
 
   // On x64 systems, off64_t and off_t are the same at the ABI level, so O_LARGEFILE

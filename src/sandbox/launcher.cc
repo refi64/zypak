@@ -24,6 +24,9 @@ constexpr std::string_view kSandboxNsEnabled = "1";
 std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_map) const {
   std::vector<std::string> wrapper;
 
+  // wrapper.push_back("strace");
+  // wrapper.push_back("-F");
+
   wrapper.push_back(helper_path_);
   wrapper.push_back("child");
 
@@ -62,6 +65,10 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
 
   if (DebugContext::instance()->enabled()) {
     env[Env::kZypakSettingEnableDebug] = "1";
+  }
+
+  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+    env[Env::kZypakZygoteStrategySpawn] = "1";
   }
 
   env[kSandboxApiVar] = kSandboxApiValue;
