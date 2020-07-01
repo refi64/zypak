@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
     DetermineZygoteStrategy();
 
     if (mode == "spawn-strategy-test") {
-      return Env::Test(Env::kZypakZygoteStrategySpawn);
+      return !Env::Test(Env::kZypakZygoteStrategySpawn);
     }
   } else if (mode == "child") {
     if (!ApplyFdMapFromArgs(&it, args.end())) {
