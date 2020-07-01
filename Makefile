@@ -109,6 +109,7 @@ helper_LIBS := $(shell pkg-config --libs glib-2.0)
 helper_SOURCES := \
 	main.cc \
 	determine_strategy.cc \
+	spawn_latest.cc \
 
 $(call build_exe,helper)
 

@@ -24,6 +24,7 @@
 #include "base/strace.h"
 #include "dbus/bus.h"
 #include "helper/determine_strategy.h"
+#include "helper/spawn_latest.h"
 
 using namespace zypak;
 
@@ -131,11 +132,19 @@ int main(int argc, char** argv) {
   auto it = args.begin();
 
   if (it == args.end()) {
-    Log() << "usage: zypak-helper [host|child] [-s] ....";
+    Log() << "usage: zypak-helper [spawn-strategy-test|host-latest|host|child] ....";
     return 1;
   }
 
   std::string_view mode = *it++;
+
+  if (mode == "host-latest") {
+    if (!SpawnLatest(ArgsView(it, args.end()))) {
+      return 1;
+    }
+
+    return 0;
+  }
 
   if (mode == "host" || mode == "spawn-strategy-test") {
     DetermineZygoteStrategy();
