@@ -11,7 +11,7 @@
 #include <dbus/dbus.h>
 
 #include "base/base.h"
-#include "base/epoll.h"
+#include "base/evloop.h"
 #include "base/guarded_value.h"
 #include "dbus/bus_error.h"
 
@@ -48,7 +48,7 @@ class BusThread {
   static std::unique_ptr<BusThread> Create(BusConnection connection, SignalHandler signal_handler);
 
   DBusConnection* connection() { return connection_.get(); }
-  RecursiveGuardedValue<Epoll>* loop() { return &epoll_; }
+  RecursiveGuardedValue<EvLoop>* evloop() { return &ev_; }
 
   void Start();
   void Shutdown();
@@ -60,12 +60,12 @@ class BusThread {
   using ShutdownFlag = std::unique_ptr<std::atomic<bool>>;
 
   struct Triggers {
-    Epoll::TriggerSourceRef shutdown;
-    Epoll::TriggerSourceRef dispatch;
+    EvLoop::TriggerSourceRef shutdown;
+    EvLoop::TriggerSourceRef dispatch;
   };
 
-  BusThread(BusConnection connection, SignalHandler handler, Epoll epoll,
-            ShutdownFlag shutdown_flag, Triggers tasks);
+  BusThread(BusConnection connection, SignalHandler handler, EvLoop ev, ShutdownFlag shutdown_flag,
+            Triggers tasks);
 
   void ThreadMain();
 
@@ -82,7 +82,7 @@ class BusThread {
 
   DBusHandlerResult HandleDBusMessage(DBusMessage* message);
 
-  RecursiveGuardedValue<Epoll> epoll_;
+  RecursiveGuardedValue<EvLoop> ev_;
 
   SignalHandler signal_handler_;
   ShutdownFlag shutdown_flag_;
@@ -90,7 +90,7 @@ class BusThread {
 
   std::thread thread_;
 
-  // This *MUST* be last, as D-Bus will call into callbacks as it closes the connection, so epoll_
+  // This *MUST* be last, as D-Bus will call into callbacks as it closes the connection, so ev_
   // must still be alive.
   BusConnection connection_;
 };

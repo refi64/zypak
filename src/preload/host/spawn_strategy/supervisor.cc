@@ -49,7 +49,7 @@ bool Supervisor::InitAndAttachToBusThread(dbus::Bus* bus) {
   request_fd_ = std::move(supervisor_end);
 
   bus->loop()->Acquire()->AddFd(
-      request_fd_.get(), Epoll::Events::Status::kRead,
+      request_fd_.get(), EvLoop::Events::Status::kRead,
       std::bind(&Supervisor::HandleSpawnRequest, this, std::placeholders::_1));
   portal_.AttachToBus(bus);
 
@@ -209,7 +209,7 @@ void Supervisor::HandleSpawnExited(dbus::FlatpakPortalProxy::SpawnExitedMessage 
   data->exit_status = message.exit_status;
 }
 
-void Supervisor::HandleSpawnRequest(Epoll::SourceRef source) {
+void Supervisor::HandleSpawnRequest(EvLoop::SourceRef source) {
   // Include the null terminator.
   std::array<std::byte, kZypakSupervisorSpawnRequest.size() + 1> buffer;
   std::vector<unique_fd> fds;

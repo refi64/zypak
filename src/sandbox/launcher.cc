@@ -67,8 +67,8 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
     env[Env::kZypakSettingEnableDebug] = "1";
   }
 
-  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
-    env[Env::kZypakZygoteStrategySpawn] = "1";
+  if (auto spawn_strategy = Env::Get(Env::kZypakZygoteStrategySpawn)) {
+    env[Env::kZypakZygoteStrategySpawn] = *spawn_strategy;
   }
 
   env[kSandboxApiVar] = kSandboxApiValue;

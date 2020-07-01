@@ -3,17 +3,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/epoll.h"
+#include "base/evloop.h"
 
-#include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/poll.h>
 
 #include <array>
 #include <cstdint>
-#include <cstring>
-#include <ctime>
-#include <memory>
 
 #include <systemd/sd-event.h>
 
@@ -28,7 +24,7 @@ constexpr int kDefaultAccuracyMs = 50;
 
 template <typename Handler>
 struct CallbackParams {
-  zypak::Epoll* epoll;
+  zypak::EvLoop* evloop;
   Handler handler;
 };
 
@@ -37,7 +33,7 @@ struct CallbackParams {
 namespace zypak {
 
 // static
-std::optional<Epoll> Epoll::Create() {
+std::optional<EvLoop> EvLoop::Create() {
   unique_fd notify_defer(eventfd(0, 0));
   if (notify_defer.invalid()) {
     Errno() << "Failed to create notify eventfd";
@@ -50,13 +46,13 @@ std::optional<Epoll> Epoll::Create() {
     return {};
   }
 
-  return Epoll(event, std::move(notify_defer));
+  return EvLoop(event, std::move(notify_defer));
 }
 
-Epoll::Epoll(sd_event* event, unique_fd notify_defer_fd)
+EvLoop::EvLoop(sd_event* event, unique_fd notify_defer_fd)
     : event_(event), notify_defer_fd_(std::move(notify_defer_fd)) {}
 
-Epoll::SourceRef::State Epoll::SourceRef::state() const {
+EvLoop::SourceRef::State EvLoop::SourceRef::state() const {
   int enabled = -1;
   ZYPAK_ASSERT_SD_ERROR(sd_event_source_get_enabled(source_, &enabled));
 
@@ -72,14 +68,14 @@ Epoll::SourceRef::State Epoll::SourceRef::state() const {
   }
 }
 
-void Epoll::SourceRef::Disable() {
+void EvLoop::SourceRef::Disable() {
   Debug() << "Disable source " << source_;
 
   ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_enabled(source_, SD_EVENT_OFF));
   ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_floating(source_, false));
 }
 
-void Epoll::TriggerSourceRef::Trigger() {
+void EvLoop::TriggerSourceRef::Trigger() {
   Debug() << "Trigger source " << source_.source_;
 
   ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_enabled(source_.source_, SD_EVENT_ONESHOT));
@@ -88,7 +84,7 @@ void Epoll::TriggerSourceRef::Trigger() {
   ZYPAK_ASSERT_WITH_ERRNO(eventfd_write(notify_defer_fd_, 1) != -1);
 }
 
-std::optional<Epoll::SourceRef> Epoll::AddTask(Epoll::EventHandler handler) {
+std::optional<EvLoop::SourceRef> EvLoop::AddTask(EvLoop::EventHandler handler) {
   ZYPAK_ASSERT(handler, << "Missing handler for task");
 
   sd_event_source* source = nullptr;
@@ -109,7 +105,7 @@ std::optional<Epoll::SourceRef> Epoll::AddTask(Epoll::EventHandler handler) {
   return source_ref;
 }
 
-std::optional<Epoll::TriggerSourceRef> Epoll::AddTrigger(Epoll::EventHandler handler) {
+std::optional<EvLoop::TriggerSourceRef> EvLoop::AddTrigger(EvLoop::EventHandler handler) {
   auto source = AddTask(handler);
   if (!source) {
     return {};
@@ -121,11 +117,11 @@ std::optional<Epoll::TriggerSourceRef> Epoll::AddTrigger(Epoll::EventHandler han
   return TriggerSourceRef(std::move(*source), notify_defer_fd_.get());
 }
 
-std::optional<Epoll::SourceRef> Epoll::AddTimerSec(int seconds, Epoll::EventHandler handler) {
+std::optional<EvLoop::SourceRef> EvLoop::AddTimerSec(int seconds, EvLoop::EventHandler handler) {
   return AddTimerMs(seconds * kMillisecondsPerSecond, handler);
 }
 
-std::optional<Epoll::SourceRef> Epoll::AddTimerMs(int ms, Epoll::EventHandler handler) {
+std::optional<EvLoop::SourceRef> EvLoop::AddTimerMs(int ms, EvLoop::EventHandler handler) {
   ZYPAK_ASSERT(handler, << "Missing handler for timer, ms = " << ms);
 
   constexpr int kClock = CLOCK_MONOTONIC;
@@ -152,7 +148,8 @@ std::optional<Epoll::SourceRef> Epoll::AddTimerMs(int ms, Epoll::EventHandler ha
   return SourceSetup(source, std::move(handler));
 }
 
-std::optional<Epoll::SourceRef> Epoll::AddFd(int fd, Events events, Epoll::IoEventHandler handler) {
+std::optional<EvLoop::SourceRef> EvLoop::AddFd(int fd, Events events,
+                                               EvLoop::IoEventHandler handler) {
   ZYPAK_ASSERT(!events.empty(), << "Missing events for fd" << fd);
   ZYPAK_ASSERT(handler, << "Missing handler for fd " << fd);
 
@@ -175,8 +172,8 @@ std::optional<Epoll::SourceRef> Epoll::AddFd(int fd, Events events, Epoll::IoEve
   return SourceSetup(source, std::move(handler));
 }
 
-std::optional<Epoll::SourceRef> Epoll::TakeFd(unique_fd fd, Events events,
-                                              Epoll::IoEventHandler handler) {
+std::optional<EvLoop::SourceRef> EvLoop::TakeFd(unique_fd fd, Events events,
+                                                EvLoop::IoEventHandler handler) {
   auto source = AddFd(fd.get(), events, std::move(handler));
   if (!source) {
     return {};
@@ -186,7 +183,7 @@ std::optional<Epoll::SourceRef> Epoll::TakeFd(unique_fd fd, Events events,
   return source;
 }
 
-Epoll::WaitResult Epoll::Wait() {
+EvLoop::WaitResult EvLoop::Wait() {
   std::array<struct pollfd, 2> pfds;
 
   pfds[0].fd = sd_event_get_fd(event_.get());
@@ -226,7 +223,7 @@ Epoll::WaitResult Epoll::Wait() {
   return WaitResult::kIdle;
 }
 
-Epoll::DispatchResult Epoll::Dispatch() {
+EvLoop::DispatchResult EvLoop::Dispatch() {
   int result = sd_event_run(event_.get(), 0);
   if (result < 0) {
     Errno(-result) << "Failed to run event loop iteration";
@@ -242,7 +239,7 @@ Epoll::DispatchResult Epoll::Dispatch() {
   return DispatchResult::kContinue;
 }
 
-bool Epoll::Exit(Epoll::ExitStatus status) {
+bool EvLoop::Exit(EvLoop::ExitStatus status) {
   if (int err = sd_event_exit(event_.get(), static_cast<int>(status)); err < 0) {
     Errno(-err) << "Failed to exit event loop";
     return false;
@@ -251,16 +248,16 @@ bool Epoll::Exit(Epoll::ExitStatus status) {
   return true;
 }
 
-Epoll::ExitStatus Epoll::exit_status() const {
+EvLoop::ExitStatus EvLoop::exit_status() const {
   int code;
   ZYPAK_ASSERT_SD_ERROR(sd_event_get_exit_code(event_.get(), &code));
 
-  return static_cast<Epoll::ExitStatus>(code);
+  return static_cast<EvLoop::ExitStatus>(code);
 }
 
 template <typename Handler>
 // static
-Epoll::SourceRef Epoll::SourceSetup(sd_event_source* source, Handler handler) {
+EvLoop::SourceRef EvLoop::SourceSetup(sd_event_source* source, Handler handler) {
   sd_event_source_set_floating(source, true);
   sd_event_source_set_userdata(source, new CallbackParams<Handler>{this, std::move(handler)});
   sd_event_source_set_destroy_callback(
@@ -270,7 +267,7 @@ Epoll::SourceRef Epoll::SourceSetup(sd_event_source* source, Handler handler) {
 
 template <typename Handler, typename... Args>
 // static
-int Epoll::GenericHandler(sd_event_source* source, void* data, Args&&... args) {
+int EvLoop::GenericHandler(sd_event_source* source, void* data, Args&&... args) {
   Debug() << "Received event from " << source;
 
   auto* params = static_cast<CallbackParams<Handler>*>(data);
@@ -295,7 +292,7 @@ int Epoll::GenericHandler(sd_event_source* source, void* data, Args&&... args) {
 }
 
 // static
-int Epoll::HandleIoEvent(sd_event_source* source, int fd, std::uint32_t revents, void* data) {
+int EvLoop::HandleIoEvent(sd_event_source* source, int fd, std::uint32_t revents, void* data) {
   if (revents & (EPOLLHUP | EPOLLERR)) {
     std::string_view reason = revents & EPOLLHUP ? "connection closed" : "unknown error";
     Log() << "Dropping " << fd << " because of " << reason;
@@ -314,7 +311,7 @@ int Epoll::HandleIoEvent(sd_event_source* source, int fd, std::uint32_t revents,
 }
 
 // static
-int Epoll::HandleTimeEvent(sd_event_source* source, std::uint64_t us, void* data) {
+int EvLoop::HandleTimeEvent(sd_event_source* source, std::uint64_t us, void* data) {
   return GenericHandler<EventHandler>(source, data);
 }
 

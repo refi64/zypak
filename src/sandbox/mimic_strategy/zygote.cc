@@ -11,7 +11,7 @@
 
 #include "base/base.h"
 #include "base/debug.h"
-#include "base/epoll.h"
+#include "base/evloop.h"
 #include "base/socket.h"
 #include "base/unique_fd.h"
 #include "sandbox/mimic_strategy/command.h"
@@ -23,15 +23,15 @@ namespace zypak::sandbox::mimic_strategy {
 
 // static
 std::optional<MimicZygoteRunner> MimicZygoteRunner::Create() {
-  auto epoll = Epoll::Create();
-  if (!epoll) {
+  auto ev = EvLoop::Create();
+  if (!ev) {
     return {};
   }
 
-  return MimicZygoteRunner(std::move(*epoll));
+  return MimicZygoteRunner(std::move(*ev));
 }
 
-void MimicZygoteRunner::HandleMessage(Epoll::SourceRef source, Epoll::Events events) {
+void MimicZygoteRunner::HandleMessage(EvLoop::SourceRef source, EvLoop::Events events) {
   static std::array<std::byte, kZygoteMaxMessageLength> buffer;
   std::vector<unique_fd> fds;
 
@@ -46,9 +46,9 @@ void MimicZygoteRunner::HandleMessage(Epoll::SourceRef source, Epoll::Events eve
     }
 
     if (len == 0 || errno == ECONNRESET) {
-      epoll_.Exit(Epoll::ExitStatus::kSuccess);
+      ev_.Exit(EvLoop::ExitStatus::kSuccess);
     } else {
-      epoll_.Exit(Epoll::ExitStatus::kFailure);
+      ev_.Exit(EvLoop::ExitStatus::kFailure);
     }
 
     return;
@@ -77,7 +77,7 @@ void MimicZygoteRunner::HandleMessage(Epoll::SourceRef source, Epoll::Events eve
     }
     break;
   case ZygoteCommand::kReap:
-    HandleReap(&epoll_, &children_, &reader);
+    HandleReap(&ev_, &children_, &reader);
     break;
   case ZygoteCommand::kTerminationStatus:
     HandleTerminationStatusRequest(&children_, &reader);
@@ -87,7 +87,7 @@ void MimicZygoteRunner::HandleMessage(Epoll::SourceRef source, Epoll::Events eve
     break;
   case ZygoteCommand::kForkRealPID:
     Log() << "Got kForkRealPID in main command runner";
-    epoll_.Exit(Epoll::ExitStatus::kFailure);
+    ev_.Exit(EvLoop::ExitStatus::kFailure);
     return;
   }
 }
@@ -105,36 +105,36 @@ bool MimicZygoteRunner::Run() {
     return false;
   }
 
-  if (!epoll_.AddFd(kZygoteHostFd, Epoll::Events::Status::kRead,
-                    std::bind(&MimicZygoteRunner::HandleMessage, this, std::placeholders::_1,
-                              std::placeholders::_2))) {
+  if (!ev_.AddFd(kZygoteHostFd, EvLoop::Events::Status::kRead,
+                 std::bind(&MimicZygoteRunner::HandleMessage, this, std::placeholders::_1,
+                           std::placeholders::_2))) {
     return false;
   }
 
   for (;;) {
-    switch (epoll_.Wait()) {
-    case Epoll::WaitResult::kError:
+    switch (ev_.Wait()) {
+    case EvLoop::WaitResult::kError:
       Log() << "Wait error, aborting mimic Zygote...";
       return false;
-    case Epoll::WaitResult::kIdle:
+    case EvLoop::WaitResult::kIdle:
       continue;
-    case Epoll::WaitResult::kReady:
+    case EvLoop::WaitResult::kReady:
       break;
     }
 
-    switch (epoll_.Dispatch()) {
-    case Epoll::DispatchResult::kError:
+    switch (ev_.Dispatch()) {
+    case EvLoop::DispatchResult::kError:
       Log() << "Dispatch error, aborting mimic Zygote...";
       return false;
-    case Epoll::DispatchResult::kExit:
+    case EvLoop::DispatchResult::kExit:
       break;
-    case Epoll::DispatchResult::kContinue:
+    case EvLoop::DispatchResult::kContinue:
       continue;
     }
   }
 
   Log() << "Quitting Zygote...";
-  return epoll_.exit_status() == Epoll::ExitStatus::kSuccess;
+  return ev_.exit_status() == EvLoop::ExitStatus::kSuccess;
 }
 
 }  // namespace zypak::sandbox::mimic_strategy

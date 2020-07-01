@@ -9,7 +9,7 @@
 #include <set>
 
 #include "base/base.h"
-#include "base/epoll.h"
+#include "base/evloop.h"
 
 namespace zypak::sandbox::mimic_strategy {
 
@@ -23,11 +23,11 @@ class MimicZygoteRunner {
   bool Run();
 
  private:
-  MimicZygoteRunner(Epoll epoll) : epoll_(std::move(epoll)) {}
+  MimicZygoteRunner(EvLoop ev) : ev_(std::move(ev)) {}
 
-  void HandleMessage(Epoll::SourceRef source, Epoll::Events events);
+  void HandleMessage(EvLoop::SourceRef source, EvLoop::Events events);
 
-  Epoll epoll_;
+  EvLoop ev_;
   std::set<pid_t> children_;
 };
 

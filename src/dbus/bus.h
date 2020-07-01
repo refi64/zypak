@@ -12,7 +12,7 @@
 #include <dbus/dbus.h>
 
 #include "base/base.h"
-#include "base/epoll.h"
+#include "base/evloop.h"
 #include "dbus/bus_message.h"
 #include "dbus/bus_readable_message.h"
 #include "dbus/bus_writable_message.h"
@@ -40,7 +40,7 @@ class Bus {
 
   static Bus* Acquire();
 
-  RecursiveGuardedValue<Epoll>* loop() { return bus_thread_->loop(); }
+  RecursiveGuardedValue<EvLoop>* loop() { return bus_thread_->evloop(); }
 
   bool IsInitialized() const;
   void Shutdown();

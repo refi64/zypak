@@ -5,13 +5,10 @@
 
 #pragma once
 
-#include <sys/epoll.h>
-
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
-#include <unordered_map>
 
 #include <systemd/sd-event.h>
 
@@ -19,14 +16,14 @@
 
 namespace zypak {
 
-// A C++-friendly wrapper over sd-event. (NOTE: The name is a legacy holdover.)
-class Epoll {
+// A C++-friendly wrapper over sd-event.
+class EvLoop {
  public:
-  Epoll(const Epoll& other) = delete;
-  Epoll(Epoll&& other) = default;
-  ~Epoll() {}
+  EvLoop(const EvLoop& other) = delete;
+  EvLoop(EvLoop&& other) = default;
+  ~EvLoop() {}
 
-  static std::optional<Epoll> Create();
+  static std::optional<EvLoop> Create();
 
   class Events {
    public:
@@ -85,7 +82,7 @@ class Epoll {
 
     sd_event_source* source_;
 
-    friend class Epoll;
+    friend class EvLoop;
     friend class TriggerSourceRef;
   };
 
@@ -105,7 +102,7 @@ class Epoll {
     SourceRef source_;
     int notify_defer_fd_;
 
-    friend class Epoll;
+    friend class EvLoop;
   };
 
   using EventHandler = std::function<void(SourceRef)>;
@@ -121,10 +118,10 @@ class Epoll {
   std::optional<SourceRef> AddTimerSec(int seconds, EventHandler handler);
   std::optional<SourceRef> AddTimerMs(int ms, EventHandler handler);
 
-  // Add a new file descriptor to poll. The file descriptor is not owned by the Epoll instance.
+  // Add a new file descriptor to poll. The file descriptor is not owned by the EvLoop instance.
   std::optional<SourceRef> AddFd(int fd, Events events, IoEventHandler handler);
 
-  // Add a new file descriptor to poll. The file descriptor will be owned by the Epoll instance.
+  // Add a new file descriptor to poll. The file descriptor will be owned by the EvLoop instance.
   std::optional<SourceRef> TakeFd(unique_fd fd, Events events, IoEventHandler handler);
 
   enum class WaitResult { kReady, kIdle, kError };
@@ -139,7 +136,7 @@ class Epoll {
   ExitStatus exit_status() const;
 
  private:
-  Epoll(sd_event* event, unique_fd notify_defer_fd);
+  EvLoop(sd_event* event, unique_fd notify_defer_fd);
 
   struct SdEventDeleter {
     void operator()(sd_event* event) { sd_event_unref(event); }

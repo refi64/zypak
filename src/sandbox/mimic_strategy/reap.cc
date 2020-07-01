@@ -15,14 +15,14 @@ namespace {
 
 class ReapTimerHandler {
  public:
-  ReapTimerHandler(Epoll* epoll, pid_t child_pid) : epoll_(epoll), child_pid_(child_pid) {}
+  ReapTimerHandler(EvLoop* ev, pid_t child_pid) : ev_(ev), child_pid_(child_pid) {}
 
   void AddToLoop() {
     constexpr int kSecondsToWaitForDeath = 2;
-    ZYPAK_ASSERT(epoll_->AddTimerSec(kSecondsToWaitForDeath, *this));
+    ZYPAK_ASSERT(ev_->AddTimerSec(kSecondsToWaitForDeath, *this));
   }
 
-  void operator()(Epoll::SourceRef source) {
+  void operator()(EvLoop::SourceRef source) {
     pid_t wret = HANDLE_EINTR(waitpid(child_pid_, nullptr, WNOHANG));
     if (wret > 0) {
       // XXX: in original code this was a logged error, but can this really occur?
@@ -42,14 +42,14 @@ class ReapTimerHandler {
   }
 
  private:
-  Epoll* epoll_;
+  EvLoop* ev_;
   pid_t child_pid_;
   bool sent_sigkill_ = false;
 };
 
 }  // namespace
 
-void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader) {
+void HandleReap(EvLoop* ep, std::set<pid_t>* children, nickle::Reader* reader) {
   int child_pid;
   if (!reader->Read<nickle::codecs::Int>(&child_pid)) {
     Log() << "Failed to read reap arguments";
