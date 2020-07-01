@@ -28,69 +28,17 @@ std::optional<FlatpakPortalProxy::Supports> FlatpakPortalProxy::GetSupportsBlock
   }
 }
 
-void FlatpakPortalProxy::SpawnAsync(std::string_view cwd, std::vector<std::string> argv,
-                                    const FdMap& fds,
-                                    std::unordered_map<std::string, std::string> env,
-                                    SpawnFlags flags, SpawnOptions options,
+std::optional<FlatpakPortalProxy::SpawnReply> FlatpakPortalProxy::SpawnBlocking(SpawnCall spawn) {
+  MethodCall method_call = BuildSpawnMethodCall(std::move(spawn));
+  return GetSpawnReply(bus_->CallBlocking(method_call));
+}
+
+void FlatpakPortalProxy::SpawnAsync(FlatpakPortalProxy::SpawnCall spawn,
                                     SpawnReplyHandler handler) {
-  MethodCall call(kFlatpakPortalRef, "Spawn");
-  MessageWriter writer = call.OpenWriter();
-
-  writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(cwd.data()),
-                                          cwd.size() + 1);  // include null terminator
-
-  {
-    MessageWriter argv_writer = writer.EnterContainer<TypeCode::kArray>("ay");
-    for (const std::string& arg : argv) {
-      argv_writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(arg.data()),
-                                                   arg.size() + 1);  // include null terminator
-    }
-  }
-
-  {
-    MessageWriter fds_writer = writer.EnterContainer<TypeCode::kArray>("{uh}");
-    for (const FdAssignment& assignment : fds) {
-      MessageWriter pair_writer = fds_writer.EnterContainer<TypeCode::kDictEntry>();
-      pair_writer.Write<TypeCode::kUInt32>(assignment.target());
-      pair_writer.Write<TypeCode::kHandle>(assignment.fd().get());
-    }
-  }
-
-  {
-    MessageWriter env_writer = writer.EnterContainer<TypeCode::kArray>("{ss}");
-    for (const auto& [var, value] : env) {
-      MessageWriter pair_writer = env_writer.EnterContainer<TypeCode::kDictEntry>();
-      pair_writer.Write<TypeCode::kString>(var);
-      pair_writer.Write<TypeCode::kString>(value);
-    }
-  }
-
-  writer.Write<TypeCode::kUInt32>(static_cast<std::uint32_t>(flags));
-
-  {
-    constexpr std::string_view kOptionSandboxFlags = "sandbox-flags";
-
-    MessageWriter options_writer = writer.EnterContainer<TypeCode::kArray>("{sv}");
-    MessageWriter pair_writer = options_writer.EnterContainer<TypeCode::kDictEntry>();
-    pair_writer.Write<TypeCode::kString>(kOptionSandboxFlags);
-
-    MessageWriter value_writer = pair_writer.EnterContainer<TypeCode::kVariant>("u");
-    value_writer.Write<TypeCode::kUInt32>(static_cast<std::uint32_t>(options.sandbox_flags));
-  }
-
-  bus_->CallAsync(std::move(call), [handler2 = std::move(handler)](Reply reply) {
-    if (std::optional<InvocationError> error = reply.ReadError()) {
-      handler2(std::move(*error));
-      return;
-    }
-
-    MessageReader reader = reply.OpenReader();
-    std::uint32_t pid;
-    if (!reader.Read<TypeCode::kUInt32>(&pid)) {
-      Log() << "Failed to read u32 pid from Spawn reply";
-      return;
-    } else {
-      handler2(pid);
+  MethodCall method_call = BuildSpawnMethodCall(std::move(spawn));
+  bus_->CallAsync(std::move(method_call), [handler = std::move(handler)](Reply reply) {
+    if (auto spawn_reply = GetSpawnReply(std::move(reply))) {
+      handler(std::move(*spawn_reply));
     }
   });
 }
@@ -109,30 +57,99 @@ std::optional<InvocationError> FlatpakPortalProxy::SpawnSignalBlocking(std::uint
 
 void FlatpakPortalProxy::SubscribeToSpawnStarted(SpawnStartedHandler handler) {
   bus_->SignalConnect(kFlatpakPortalRef.interface().data(), "SpawnStarted",
-                      [handler2 = std::move(handler)](Signal signal) {
+                      [handler = std::move(handler)](Signal signal) {
                         MessageReader reader = signal.OpenReader();
                         SpawnStartedMessage message;
                         if (!reader.Read<TypeCode::kUInt32>(&message.external_pid) ||
                             !reader.Read<TypeCode::kUInt32>(&message.internal_pid)) {
                           Log() << "Failed to read SpawnStarted message";
                         } else {
-                          handler2(message);
+                          handler(message);
                         }
                       });
 }
 
 void FlatpakPortalProxy::SubscribeToSpawnExited(SpawnExitedHandler handler) {
   bus_->SignalConnect(kFlatpakPortalRef.interface().data(), "SpawnExited",
-                      [handler2 = std::move(handler)](Signal signal) {
+                      [handler = std::move(handler)](Signal signal) {
                         MessageReader reader = signal.OpenReader();
                         SpawnExitedMessage message;
                         if (!reader.Read<TypeCode::kUInt32>(&message.external_pid) ||
                             !reader.Read<TypeCode::kUInt32>(&message.exit_status)) {
                           Log() << "Failed to read SpawnExited message";
                         } else {
-                          handler2(message);
+                          handler(message);
                         }
                       });
+}
+
+MethodCall FlatpakPortalProxy::BuildSpawnMethodCall(SpawnCall spawn) {
+  MethodCall call(kFlatpakPortalRef, "Spawn");
+  MessageWriter writer = call.OpenWriter();
+
+  ZYPAK_ASSERT(!spawn.cwd.empty());
+  writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(spawn.cwd.data()),
+                                          spawn.cwd.size() + 1);  // include null terminator
+
+  {
+    ZYPAK_ASSERT(!spawn.argv.empty());
+    MessageWriter argv_writer = writer.EnterContainer<TypeCode::kArray>("ay");
+    for (const std::string& arg : spawn.argv) {
+      argv_writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(arg.data()),
+                                                   arg.size() + 1);  // include null terminator
+    }
+  }
+
+  {
+    MessageWriter fds_writer = writer.EnterContainer<TypeCode::kArray>("{uh}");
+    if (spawn.fds != nullptr) {
+      for (const FdAssignment& assignment : *spawn.fds) {
+        MessageWriter pair_writer = fds_writer.EnterContainer<TypeCode::kDictEntry>();
+        pair_writer.Write<TypeCode::kUInt32>(assignment.target());
+        pair_writer.Write<TypeCode::kHandle>(assignment.fd().get());
+      }
+    }
+  }
+
+  {
+    MessageWriter env_writer = writer.EnterContainer<TypeCode::kArray>("{ss}");
+    for (const auto& [var, value] : spawn.env) {
+      MessageWriter pair_writer = env_writer.EnterContainer<TypeCode::kDictEntry>();
+      pair_writer.Write<TypeCode::kString>(var);
+      pair_writer.Write<TypeCode::kString>(value);
+    }
+  }
+
+  writer.Write<TypeCode::kUInt32>(static_cast<std::uint32_t>(spawn.flags));
+
+  {
+    constexpr std::string_view kOptionSandboxFlags = "sandbox-flags";
+
+    MessageWriter options_writer = writer.EnterContainer<TypeCode::kArray>("{sv}");
+    MessageWriter pair_writer = options_writer.EnterContainer<TypeCode::kDictEntry>();
+    pair_writer.Write<TypeCode::kString>(kOptionSandboxFlags);
+
+    MessageWriter value_writer = pair_writer.EnterContainer<TypeCode::kVariant>("u");
+    value_writer.Write<TypeCode::kUInt32>(static_cast<std::uint32_t>(spawn.options.sandbox_flags));
+  }
+
+  return call;
+}
+
+// static
+std::optional<FlatpakPortalProxy::SpawnReply> FlatpakPortalProxy::GetSpawnReply(Reply reply) {
+  if (std::optional<InvocationError> error = reply.ReadError()) {
+    return std::move(*error);
+  }
+
+  MessageReader reader = reply.OpenReader();
+  std::uint32_t pid;
+  if (!reader.Read<TypeCode::kUInt32>(&pid)) {
+    Log() << "Failed to read u32 pid from Spawn reply";
+    return {};
+  } else {
+    return pid;
+  }
 }
 
 std::optional<std::uint32_t> FlatpakPortalProxy::GetUint32PropertyBlocking(std::string_view name) {

@@ -103,13 +103,17 @@ $(call build_exe,sandbox)
 
 helper_NAME := zypak-helper
 helper_DEPS := dbus base
+helper_CXXFLAGS := $(shell pkg-config --cflags glib-2.0)
+helper_LIBS := $(shell pkg-config --libs glib-2.0)
 helper_SOURCES := \
 	main.cc \
+	determine_strategy.cc \
 
 $(call build_exe,helper)
 
+# XXX: Add glib-2.0 flags here so autocomplete works
 compile_flags.txt :
-	echo -xc++ $(CXXFLAGS) | tr ' ' '\n' > compile_flags.txt
+	echo -xc++ $(CXXFLAGS) $(helper_CXXFLAGS) | tr ' ' '\n' > compile_flags.txt
 
 clean :
 	rm -rf $(BUILD)

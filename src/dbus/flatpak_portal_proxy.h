@@ -69,9 +69,19 @@ class FlatpakPortalProxy {
   std::optional<std::uint32_t> GetVersionBlocking();
   std::optional<Supports> GetSupportsBlocking();
 
-  void SpawnAsync(std::string_view cwd, std::vector<std::string> argv, const FdMap& fds,
-                  std::unordered_map<std::string, std::string> env, SpawnFlags flags,
-                  SpawnOptions options, SpawnReplyHandler handler);
+  struct SpawnCall {
+    SpawnCall() {}
+
+    std::string_view cwd;
+    std::vector<std::string> argv;
+    const FdMap* fds = nullptr;
+    std::unordered_map<std::string, std::string> env;
+    SpawnFlags flags = kNoSpawnFlags;
+    SpawnOptions options;
+  };
+
+  std::optional<SpawnReply> SpawnBlocking(SpawnCall spawn);
+  void SpawnAsync(SpawnCall spawn, SpawnReplyHandler handler);
   std::optional<InvocationError> SpawnSignalBlocking(std::uint32_t pid, std::uint32_t signal);
 
   void SubscribeToSpawnStarted(SpawnStartedHandler handler);
@@ -81,6 +91,10 @@ class FlatpakPortalProxy {
   static constexpr FloatingRef kFlatpakPortalRef =
       FloatingRef("org.freedesktop.portal.Flatpak", "/org/freedesktop/portal/Flatpak",
                   "org.freedesktop.portal.Flatpak");
+
+  MethodCall BuildSpawnMethodCall(SpawnCall spawn);
+  // static so it can be used easily in a callback without having to capture `this`
+  static std::optional<SpawnReply> GetSpawnReply(Reply reply);
 
   std::optional<std::uint32_t> GetUint32PropertyBlocking(std::string_view name);
 

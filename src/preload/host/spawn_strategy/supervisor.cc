@@ -261,23 +261,26 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
   nickle::buffers::ReadOnlyContainerBuffer buffer(target);
   nickle::Reader reader(&buffer);
 
-  std::uint32_t command_size;
-  if (!reader.Read<nickle::codecs::UInt32>(&command_size)) {
+  dbus::FlatpakPortalProxy::SpawnCall spawn;
+  spawn.cwd = kSpawnDirectory;
+
+  std::uint32_t argc;
+  if (!reader.Read<nickle::codecs::UInt32>(&argc)) {
     Log() << "Failed to read command size";
     return;
   }
 
-  std::vector<std::string> command;
-  for (std::uint32_t i = 0; i < command_size; i++) {
+  for (std::uint32_t i = 0; i < argc; i++) {
     std::string item;
     if (!reader.Read<nickle::codecs::String>(&item)) {
       Log() << "Failed to read comment argument #" << i;
       return;
     }
-    command.push_back(std::move(item));
+    spawn.argv.push_back(std::move(item));
   }
 
   FdMap fd_map;
+  spawn.fds = &fd_map;
   for (std::uint32_t i = 0; i < fds.size(); i++) {
     std::uint32_t target_fd;
     if (!reader.Read<nickle::codecs::UInt32>(&target_fd)) {
@@ -293,7 +296,6 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
     return;
   }
 
-  std::unordered_map<std::string, std::string> env;
   for (std::uint32_t i = 0; i < env_size; i++) {
     std::string var, value;
     if (!reader.Read<nickle::codecs::String>(&var) ||
@@ -301,7 +303,7 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
       Log() << "Failed to read env pair #" << i;
       return;
     }
-    env[var] = value;
+    spawn.env[var] = value;
   }
 
   std::uint32_t spawn_flags;
@@ -312,11 +314,11 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
     return;
   }
 
-  Debug() << "Got request to run: " << Join(command.begin(), command.end());
-
-  dbus::FlatpakPortalProxy::SpawnOptions spawn_options;
-  spawn_options.sandbox_flags =
+  spawn.flags = static_cast<dbus::FlatpakPortalProxy::SpawnFlags>(spawn_flags);
+  spawn.options.sandbox_flags =
       static_cast<dbus::FlatpakPortalProxy::SpawnOptions::SandboxFlags>(sandbox_flags);
+
+  Debug() << "Got request to run: " << Join(spawn.argv.begin(), spawn.argv.end());
 
   auto stub_pids_data = stub_pids_data_.Acquire(GuardReleaseNotify::kNone);
   auto it = stub_pids_data->emplace(stub_pid, StubPidData{}).first;
@@ -324,10 +326,8 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
 
   Debug() << "Starting as " << stub_pid;
 
-  portal_.SpawnAsync(
-      kSpawnDirectory, std::move(command), fd_map, std::move(env),
-      static_cast<dbus::FlatpakPortalProxy::SpawnFlags>(spawn_flags), spawn_options,
-      std::bind(&Supervisor::HandleSpawnReply, this, stub_pid, std::placeholders::_1));
+  portal_.SpawnAsync(std::move(spawn), std::bind(&Supervisor::HandleSpawnReply, this, stub_pid,
+                                                 std::placeholders::_1));
 }
 
 void Supervisor::HandleSpawnReply(pid_t stub_pid, dbus::FlatpakPortalProxy::SpawnReply reply) {

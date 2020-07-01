@@ -5,7 +5,7 @@ ColumnLimit: 100
 FixNamespaceComments: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<(dbus|systemd)/'
+  - Regex: '^<(dbus|glib|systemd)/'
     Priority: 3
   - Regex: '^<nickle'
     Priority: 3

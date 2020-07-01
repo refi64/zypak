@@ -22,6 +22,7 @@
 #include "base/str_util.h"
 #include "dbus/bus.h"
 #include "dbus/flatpak_portal_proxy.h"
+#include "helper/determine_strategy.h"
 
 using namespace zypak;
 
@@ -31,33 +32,6 @@ using ArgsView = std::vector<std::string_view>;
 
 constexpr std::string_view kSandboxHelperFdVar = "SBX_D";
 constexpr std::string_view kSandboxHelperPidVar = "SBX_HELPER_PID";
-
-void DetermineZygoteStrategy() {
-  if (auto spawn_strategy = Env::Get(Env::kZypakZygoteStrategySpawn)) {
-    Log() << "Using spawn strategy test " << *spawn_strategy << " as set by environment";
-    return;
-  }
-
-  constexpr std::uint32_t kMinPortalSupportingSpawnStarted = 4;
-
-  dbus::Bus* bus = dbus::Bus::Acquire();
-  ZYPAK_ASSERT(bus);
-
-  dbus::FlatpakPortalProxy portal(bus);
-  if (auto opt_version = portal.GetVersionBlocking()) {
-    if (*opt_version >= kMinPortalSupportingSpawnStarted) {
-      Debug() << "Portal v4 is available, using spawn strategy";
-
-      Env::Set(Env::kZypakZygoteStrategySpawn, "1");
-    } else {
-      Debug() << "Portal v4 is not available, using mimic strategy";
-    }
-  } else {
-    Log() << "WARNING: Unknown version, falling back to mimic Zygote strategy";
-  }
-
-  bus->Shutdown();
-}
 
 bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
   FdMap fd_map;
@@ -98,7 +72,7 @@ bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
   return true;
 }
 
-bool StubSandboxHelper(unique_fd fd) {
+bool StubSandboxChrootHelper(unique_fd fd) {
   if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0) == -1) {
     Errno() << "Warning: Failed to prctl(DEATHSIG)";
   }
@@ -151,8 +125,12 @@ int main(int argc, char** argv) {
     it++;
   }
 
-  if (mode == "host") {
+  if (mode == "host" || mode == "test") {
     DetermineZygoteStrategy();
+
+    if (mode == "test") {
+      return Env::Test(Env::kZypakZygoteStrategySpawn);
+    }
   } else if (mode == "child") {
     if (!ApplyFdMapFromArgs(&it, args.end())) {
       return 1;
@@ -225,7 +203,7 @@ int main(int argc, char** argv) {
       Errno() << "Helper fork failed";
       return 1;
     } else if (helper == 0) {
-      if (!StubSandboxHelper(std::move(helper_end))) {
+      if (!StubSandboxChrootHelper(std::move(helper_end))) {
         return 1;
       }
 
