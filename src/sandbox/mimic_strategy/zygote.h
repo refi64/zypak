@@ -6,14 +6,29 @@
 #pragma once
 
 #include <cstdint>
+#include <set>
 
 #include "base/base.h"
+#include "base/epoll.h"
 
 namespace zypak::sandbox::mimic_strategy {
 
 ATTR_NO_WARN_UNUSED constexpr int kZygoteHostFd = 3;
 ATTR_NO_WARN_UNUSED constexpr std::size_t kZygoteMaxMessageLength = 12288;
 
-bool RunMimicZygote();
+class MimicZygoteRunner {
+ public:
+  static std::optional<MimicZygoteRunner> Create();
+
+  bool Run();
+
+ private:
+  MimicZygoteRunner(Epoll epoll) : epoll_(std::move(epoll)) {}
+
+  void HandleMessage(Epoll::SourceRef source, Epoll::Events events);
+
+  Epoll epoll_;
+  std::set<pid_t> children_;
+};
 
 }  // namespace zypak::sandbox::mimic_strategy

@@ -46,7 +46,13 @@ int main(int argc, char** argv) {
         return 1;
       }
 
-      if (!mimic_strategy::RunMimicZygote()) {
+      auto runner = mimic_strategy::MimicZygoteRunner::Create();
+      if (!runner) {
+        Log() << "Failed to create zygote runner";
+        return 1;
+      }
+
+      if (!runner->Run()) {
         return 1;
       }
     }

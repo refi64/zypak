@@ -74,7 +74,7 @@ class Supervisor {
   void HandleSpawnStarted(dbus::FlatpakPortalProxy::SpawnStartedMessage message);
   void HandleSpawnExited(dbus::FlatpakPortalProxy::SpawnExitedMessage message);
 
-  bool HandleSpawnRequest(Epoll* unsafe_ep);
+  void HandleSpawnRequest(Epoll::SourceRef source);
   void FulfillSpawnRequest(unique_fd fd, pid_t stub_pid);
   void HandleSpawnReply(pid_t stub_pid, dbus::FlatpakPortalProxy::SpawnReply reply);
 

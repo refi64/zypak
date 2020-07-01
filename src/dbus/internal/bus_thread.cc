@@ -23,47 +23,40 @@ std::unique_ptr<BusThread> BusThread::Create(BusConnection connection,
 
   ShutdownFlag shutdown_flag = std::make_unique<std::atomic<bool>>(false);
 
-  std::optional<Epoll::TriggerReceiver> shutdown_receiver, trigger_receiver;
+  std::optional<Epoll::TriggerSourceRef> shutdown_source, dispatch_source;
 
-  // The execution of the trigger will itself be an iteration of the main loop,
+  // The execution of the task will itself be an iteration of the main loop,
   // so the loop will be able to check the trigger status in between.
-  shutdown_receiver = epoll->AddTrigger(
-      [flag = shutdown_flag.get()](Epoll* epoll, Epoll::TriggerReceiver receiver) mutable {
-        flag->store(true);
-        receiver.GetAndClear();
-        return true;
-      });
+  shutdown_source = epoll->AddTrigger(
+      [flag = shutdown_flag.get()](Epoll::SourceRef source) { flag->store(true); });
 
-  trigger_receiver = epoll->AddTrigger(
-      [conn = connection.get()](Epoll* epoll, Epoll::TriggerReceiver receiver) mutable {
-        receiver.GetAndClear();
+  dispatch_source = epoll->AddTrigger([conn = connection.get()](Epoll::SourceRef source) {
+    Debug() << "Dispatching on bus thread";
 
-        Debug() << "Dispatching on bus thread";
+    for (;;) {
+      switch (dbus_connection_get_dispatch_status(conn)) {
+      case DBUS_DISPATCH_DATA_REMAINS:
+        dbus_connection_dispatch(conn);
+        break;
+      case DBUS_DISPATCH_COMPLETE:
+        return;
+      case DBUS_DISPATCH_NEED_MEMORY:
+        ZYPAK_ASSERT(false, << "D-Bus hit OOM");
+      }
+    }
+  });
 
-        for (;;) {
-          switch (dbus_connection_get_dispatch_status(conn)) {
-          case DBUS_DISPATCH_DATA_REMAINS:
-            dbus_connection_dispatch(conn);
-            break;
-          case DBUS_DISPATCH_COMPLETE:
-            return true;
-          case DBUS_DISPATCH_NEED_MEMORY:
-            ZYPAK_ASSERT(false, << "D-Bus hit OOM");
-          }
-        }
-      });
-
-  if (!shutdown_receiver || !trigger_receiver) {
-    Log() << "Could not get trigger receivers for bus thread";
+  if (!shutdown_source || !dispatch_source) {
+    Log() << "Could not add required sources for bus thread";
     return {};
   }
 
-  Triggers triggers{shutdown_receiver->trigger(), trigger_receiver->trigger()};
+  Triggers tasks{std::move(*shutdown_source), std::move(*dispatch_source)};
 
   // Can't use make_unique, because our constructor is private.
   return std::unique_ptr<BusThread>(new BusThread(std::move(connection), std::move(signal_handler),
                                                   std::move(*epoll), std::move(shutdown_flag),
-                                                  triggers));
+                                                  std::move(tasks)));
 }
 
 void BusThread::Start() {
@@ -78,7 +71,11 @@ void BusThread::Shutdown() {
   Debug() << "Shutting down bus thread...";
 
   if (thread_.joinable()) {
-    triggers_.shutdown.Add();
+    {
+      // Need to lock to activate triggers.
+      auto ep = epoll_.Acquire();
+      triggers_.shutdown.Trigger();
+    }
     thread_.join();
   } else {
     Log() << "Bus thread is not joinable";
@@ -90,9 +87,9 @@ void BusThread::Shutdown() {
 
 void BusThread::SendCall(MethodCall call, CallHandler handler) {
   auto ep = epoll_.Acquire();
-  ZYPAK_ASSERT(ep->AddTask([this, call2 = std::move(call), handler](Epoll* unsafe_ep) {
+  ZYPAK_ASSERT(ep->AddTask([this, call = std::move(call), handler](Epoll::SourceRef source) {
     DBusPendingCall* pending = nullptr;
-    ZYPAK_ASSERT(dbus_connection_send_with_reply(connection_.get(), call2.message(), &pending, -1));
+    ZYPAK_ASSERT(dbus_connection_send_with_reply(connection_.get(), call.message(), &pending, -1));
     ZYPAK_ASSERT(pending);
 
     ZYPAK_ASSERT(dbus_pending_call_set_notify(
@@ -102,18 +99,15 @@ void BusThread::SendCall(MethodCall call, CallHandler handler) {
           (*handler)(Reply(dbus_pending_call_steal_reply(pending)));
         },
         new CallHandler(handler), [](void* data) { delete static_cast<CallHandler*>(data); }));
-
-    return true;
   }));
 }
 
 void BusThread::AddMatch(std::string match, MatchErrorHandler handler) {
   auto ep = epoll_.Acquire();
-  ep->AddTask([this, match2 = std::move(match), handler](Epoll* unsafe_ep) {
+  ep->AddTask([this, match = std::move(match), handler](Epoll::SourceRef source) {
     Error error;
-    dbus_bus_add_match(connection_.get(), match2.c_str(), error.get());
+    dbus_bus_add_match(connection_.get(), match.c_str(), error.get());
     handler(std::move(error));
-    return true;
   });
 }
 
@@ -148,39 +142,37 @@ BusThread::BusThread(BusConnection connection, SignalHandler signal_handler, Epo
 }
 
 void BusThread::ThreadMain() {
-  static Epoll::EventSet events;
-
-  if (events.count() != 0) {
-    Debug() << "Delayed dispatch of " << events.count() << " events";
-    auto ep = epoll_.Acquire();
-    if (!ep->Dispatch(events)) {
-      Log() << "Epoll iteration failed in bus thread! Aborting...";
-      abort();
-    }
-  }
-
   while (!shutdown_flag_->load()) {
     Debug() << "Pumping bus thread";
 
     // Don't hold any lock while waiting, otherwise other threads won't be able to touch the bus at
     // all.
-    if (!epoll_.unsafe()->Wait(&events)) {
+    switch (epoll_.unsafe()->Wait()) {
+    case Epoll::WaitResult::kIdle:
+      continue;
+    case Epoll::WaitResult::kReady:
+      break;
+    case Epoll::WaitResult::kError:
       Log() << "Epoll wait failed in bus thread! Aborting...";
       abort();
     }
 
     if (shutdown_flag_->load()) {
-      Debug() << "Early exit from bus thread with " << events.count() << " pending events";
+      Debug() << "Exit from bus thread with pending events";
     }
 
     Debug() << "Begin dispatch";
     auto ep = epoll_.Acquire();
-    if (!ep->Dispatch(events)) {
+    switch (ep->Dispatch()) {
+    case Epoll::DispatchResult::kExit:
+      // We never call Exit, so this is unexpected.
+      ZYPAK_ASSERT(false, << "Unexpected loop exit");
+    case Epoll::DispatchResult::kContinue:
+      continue;
+    case Epoll::DispatchResult::kError:
       Log() << "Epoll iteration failed in bus thread! Aborting...";
       abort();
     }
-    Debug() << "End dispatch";
-    events.Clear();
   }
 }
 
@@ -189,15 +181,16 @@ void BusThread::HandleDBusDispatchStatus(DBusDispatchStatus status) {
 
   ZYPAK_ASSERT(status != DBUS_DISPATCH_NEED_MEMORY);
   if (status == DBUS_DISPATCH_DATA_REMAINS) {
-    triggers_.dispatch.Add();
+    triggers_.dispatch.Trigger();
   }
 }
 
 void BusThread::HandleDBusWakeRequest() {
   Debug() << "Got D-Bus wake request";
+
   // XXX: We need to dispatch here, otherwise it'll lock, but I'm not sure why
   // HandleDBusDispatchStatus isn't always called instead?
-  triggers_.dispatch.Add();
+  triggers_.dispatch.Trigger();
 }
 
 dbus_bool_t BusThread::HandleDBusWatchAdd(DBusWatch* watch) {
@@ -221,7 +214,7 @@ dbus_bool_t BusThread::HandleDBusWatchAdd(DBusWatch* watch) {
   }
 
   auto ep = epoll_.Acquire();
-  auto opt_id = ep->AddFd(fd, events, [watch](Epoll* unsafe_ep, Epoll::Events events) {
+  auto source = ep->AddFd(fd, events, [watch](Epoll::SourceRef source, Epoll::Events events) {
     Debug() << "Incoming events on D-Bus watch " << dbus_watch_get_unix_fd(watch) << ": "
             << static_cast<int>(events.status());
 
@@ -238,13 +231,14 @@ dbus_bool_t BusThread::HandleDBusWatchAdd(DBusWatch* watch) {
     return true;
   });
 
-  if (!opt_id) {
+  if (!source) {
     Log() << "Failed to add event poller for D-Bus watcher";
     return false;
   }
 
-  Epoll::Id* heap_id = new Epoll::Id(*opt_id);
-  dbus_watch_set_data(watch, heap_id, [](void* data) { delete static_cast<Epoll::Id*>(data); });
+  Epoll::SourceRef* heap_source = new Epoll::SourceRef(*source);
+  dbus_watch_set_data(watch, heap_source,
+                      [](void* data) { delete static_cast<Epoll::SourceRef*>(data); });
 
   return true;
 }
@@ -252,9 +246,10 @@ dbus_bool_t BusThread::HandleDBusWatchAdd(DBusWatch* watch) {
 void BusThread::HandleDBusWatchRemove(DBusWatch* watch) {
   Debug() << "D-Bus watch remove " << dbus_watch_get_unix_fd(watch);
 
-  if (auto* id = static_cast<Epoll::Id*>(dbus_watch_get_data(watch))) {
+  if (auto* source = static_cast<Epoll::SourceRef*>(dbus_watch_get_data(watch))) {
+    // Need to lock to disable sources.
     auto ep = epoll_.Acquire();
-    ep->Remove(*id);
+    source->Disable();
     dbus_watch_set_data(watch, nullptr, nullptr);
   }
 }
@@ -274,31 +269,30 @@ dbus_bool_t BusThread::HandleDBusTimeoutAdd(DBusTimeout* timeout) {
   }
 
   auto ep = epoll_.Acquire();
-
   int ms = dbus_timeout_get_interval(timeout);
-  auto opt_id = ep->AddTimerMs(
-      ms,
-      [timeout](Epoll* ep) {
-        ZYPAK_ASSERT(dbus_timeout_handle(timeout));
-        return true;
-      },
-      /*repeat=*/true);
+  auto source = ep->AddTimerMs(ms, [this, timeout](Epoll::SourceRef source) {
+    ZYPAK_ASSERT(dbus_timeout_handle(timeout));
+    // XXX: Ugly code to re-arm the timer.
+    HandleDBusTimeoutAdd(timeout);
+  });
 
-  if (!opt_id) {
+  if (!source) {
     Log() << "Failed to add event poller for D-Bus timeout";
     return false;
   }
 
-  Epoll::Id* heap_id = new Epoll::Id(*opt_id);
-  dbus_timeout_set_data(timeout, heap_id, [](void* data) { delete static_cast<Epoll::Id*>(data); });
+  Epoll::SourceRef* heap_source = new Epoll::SourceRef(*source);
+  dbus_timeout_set_data(timeout, heap_source,
+                        [](void* data) { delete static_cast<Epoll::SourceRef*>(data); });
 
   return true;
 }
 
 void BusThread::HandleDBusTimeoutRemove(DBusTimeout* timeout) {
-  if (auto* id = static_cast<Epoll::Id*>(dbus_timeout_get_data(timeout))) {
+  if (auto* source = static_cast<Epoll::SourceRef*>(dbus_timeout_get_data(timeout))) {
+    // Need to lock to disable sources.
     auto ep = epoll_.Acquire();
-    ep->Remove(*id);
+    source->Disable();
   }
 }
 

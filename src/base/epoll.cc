@@ -7,12 +7,15 @@
 
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
-#include <sys/timerfd.h>
+#include <sys/poll.h>
 
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <ctime>
 #include <memory>
+
+#include <systemd/sd-event.h>
 
 #include "base/base.h"
 #include "base/debug.h"
@@ -20,7 +23,14 @@
 namespace {
 
 constexpr int kMillisecondsPerSecond = 1000;
-constexpr int kNanosecondsPerMillisecond = 1000000;
+constexpr int kMicrosecondsPerMillisecond = 1000;
+constexpr int kDefaultAccuracyMs = 50;
+
+template <typename Handler>
+struct CallbackParams {
+  zypak::Epoll* epoll;
+  Handler handler;
+};
 
 }  // namespace
 
@@ -28,233 +38,284 @@ namespace zypak {
 
 // static
 std::optional<Epoll> Epoll::Create() {
-  unique_fd epfd(epoll_create1(EPOLL_CLOEXEC));
-  if (epfd.invalid()) {
-    Errno() << "Failed to create epoll loop";
+  unique_fd notify_defer(eventfd(0, 0));
+  if (notify_defer.invalid()) {
+    Errno() << "Failed to create notify eventfd";
     return {};
   }
 
-  return Epoll(std::move(epfd));
-}
-
-Epoll::Epoll(unique_fd epfd) : epfd_(std::move(epfd)) {}
-
-Epoll::~Epoll() {
-  for (const auto& [fd, data] : fd_data_) {
-    if (data.owned) {
-      close(fd);
-    }
-  }
-}
-
-bool Epoll::Trigger::Add(std::uint64_t count /*= 1*/) {
-  ZYPAK_ASSERT(count > 0);
-
-  static_assert(sizeof(count) == 8);
-
-  ssize_t bytes_written =
-      HANDLE_EINTR(write(id_.fd_, reinterpret_cast<void*>(&count), sizeof(count)));
-  // XXX: Not sure if < sizeof(count) is possible for eventfd?
-  ZYPAK_ASSERT(bytes_written == sizeof(count) || bytes_written == -1);
-
-  if (bytes_written == -1) {
-    Errno() << "Failed to write to trigger";
-    return false;
-  }
-
-  return true;
-}
-
-std::optional<std::uint64_t> Epoll::TriggerReceiver::GetAndClear() {
-  std::uint64_t value;
-
-  ssize_t bytes_read = HANDLE_EINTR(read(id_.fd_, reinterpret_cast<void*>(&value), sizeof(value)));
-  // XXX: See comment above in Trigger::Add.
-  ZYPAK_ASSERT(bytes_read == sizeof(value) || bytes_read == -1);
-
-  if (bytes_read == -1) {
-    Errno() << "Failed to get trigger state from " << id_.fd_;
+  sd_event* event = nullptr;
+  if (int err = sd_event_new(&event); err < 0) {
+    Errno(-err) << "Failed to create event loop";
     return {};
   }
 
-  return value;
+  return Epoll(event, std::move(notify_defer));
 }
 
-std::optional<Epoll::TriggerReceiver> Epoll::AddTrigger(std::uint64_t initial,
-                                                        TriggerHandler func) {
-  unique_fd efd(eventfd(initial, 0));
-  if (efd.invalid()) {
-    Errno() << "Failed to create eventfd";
-    return {};
+Epoll::Epoll(sd_event* event, unique_fd notify_defer_fd)
+    : event_(event), notify_defer_fd_(std::move(notify_defer_fd)) {}
+
+Epoll::SourceRef::State Epoll::SourceRef::state() const {
+  int enabled = -1;
+  ZYPAK_ASSERT_SD_ERROR(sd_event_source_get_enabled(source_, &enabled));
+
+  switch (enabled) {
+  case SD_EVENT_OFF:
+    return State::kDisabled;
+  case SD_EVENT_ONESHOT:
+    return State::kActiveOnce;
+  case SD_EVENT_ON:
+    return State::kActiveForever;
+  default:
+    ZYPAK_ASSERT(false, << "Invalid sd-event state: " << enabled);
   }
-
-  auto opt_id = TakeFd(std::move(efd), Handler());
-  if (!opt_id) {
-    return {};
-  }
-
-  TriggerReceiver receiver(*opt_id);
-
-  fd_data_[opt_id->fd_].func = [func2 = std::move(func), receiver](Epoll* ep, Events events) {
-    return func2(ep, receiver);
-  };
-
-  return receiver;
 }
 
-std::optional<Epoll::Id> Epoll::AddTask(Handler func) {
-  // Start with a value of 1 so it's immediately ready.
-  auto opt_receiver = AddTrigger(
-      1, [func2 = std::move(func)](Epoll* ep, TriggerReceiver receiver) { return func2(ep); });
-  if (!opt_receiver) {
-    return {};
-  }
+void Epoll::SourceRef::Disable() {
+  Debug() << "Disable source " << source_;
 
-  fd_data_[opt_receiver->id().fd_].once = true;
-
-  Debug() << "Task fd is " << opt_receiver->id().fd_;
-  return opt_receiver->id();
+  ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_enabled(source_, SD_EVENT_OFF));
+  ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_floating(source_, false));
 }
 
-std::optional<Epoll::Id> Epoll::AddTimerSec(int seconds, Epoll::Handler func,
-                                            bool repeat /*= false*/) {
-  return AddTimerMs(seconds * kMillisecondsPerSecond, func);
+void Epoll::TriggerSourceRef::Trigger() {
+  Debug() << "Trigger source " << source_.source_;
+
+  ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_enabled(source_.source_, SD_EVENT_ONESHOT));
+  ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_floating(source_.source_, true));
+
+  ZYPAK_ASSERT_WITH_ERRNO(eventfd_write(notify_defer_fd_, 1) != -1);
 }
 
-std::optional<Epoll::Id> Epoll::AddTimerMs(int ms, Epoll::Handler func, bool repeat /*= false*/) {
-  unique_fd tfd(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC));
-  if (tfd.invalid()) {
-    Errno() << "Failed to create timer";
+std::optional<Epoll::SourceRef> Epoll::AddTask(Epoll::EventHandler handler) {
+  ZYPAK_ASSERT(handler, << "Missing handler for task");
+
+  sd_event_source* source = nullptr;
+  if (int err = sd_event_add_defer(event_.get(), &source, &GenericHandler<EventHandler>, nullptr);
+      err < 0) {
+    Errno(-err) << "Failed to add task";
     return {};
   }
 
-  struct itimerspec ts;
-  std::memset(reinterpret_cast<void*>(&ts), 0, sizeof(ts));
-  ts.it_value.tv_sec = ms / kMillisecondsPerSecond;
-  ts.it_value.tv_nsec = (ms % kMillisecondsPerSecond) * kNanosecondsPerMillisecond;
+  Debug() << "Added task source " << source;
+  SourceRef source_ref = SourceSetup(source, std::move(handler));
 
-  if (repeat) {
-    ts.it_interval = ts.it_value;
+  // Notify any waiters.
+  if (eventfd_write(notify_defer_fd_.get(), 1) == -1) {
+    Errno() << "WARNING: Failed to notify defer fd";
   }
 
-  if (timerfd_settime(tfd.get(), 0, &ts, nullptr) == -1) {
-    Errno() << "Failed to set timer expiration";
-    return {};
-  }
-
-  auto id = TakeFd(std::move(tfd), func);
-  if (!id) {
-    return {};
-  }
-
-  if (!repeat) {
-    fd_data_[id->fd_].once = true;
-  }
-
-  return id;
+  return source_ref;
 }
 
-std::optional<Epoll::Id> Epoll::AddFd(int fd, Events events, Epoll::EventsHandler func) {
+std::optional<Epoll::TriggerSourceRef> Epoll::AddTrigger(Epoll::EventHandler handler) {
+  auto source = AddTask(handler);
+  if (!source) {
+    return {};
+  }
+
+  ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_enabled(source->source_, SD_EVENT_OFF));
+
+  Debug() << "Lifting task " << source->source_ << " to trigger";
+  return TriggerSourceRef(std::move(*source), notify_defer_fd_.get());
+}
+
+std::optional<Epoll::SourceRef> Epoll::AddTimerSec(int seconds, Epoll::EventHandler handler) {
+  return AddTimerMs(seconds * kMillisecondsPerSecond, handler);
+}
+
+std::optional<Epoll::SourceRef> Epoll::AddTimerMs(int ms, Epoll::EventHandler handler) {
+  ZYPAK_ASSERT(handler, << "Missing handler for timer, ms = " << ms);
+
+  constexpr int kClock = CLOCK_MONOTONIC;
+
+  std::uint64_t now;
+  if (int err = sd_event_now(event_.get(), kClock, &now); err < 0) {
+    Errno(-err) << "Failed to get current clock tick";
+    return {};
+  }
+
+  std::uint64_t target_time = now + ms * kMicrosecondsPerMillisecond;
+
+  sd_event_source* source = nullptr;
+  if (int err = sd_event_add_time(event_.get(), &source, kClock, target_time,
+                                  kDefaultAccuracyMs * kMicrosecondsPerMillisecond,
+                                  &HandleTimeEvent, nullptr);
+      err < 0) {
+    Errno(-err) << "Failed to add timer event";
+    return {};
+  }
+
+  Debug() << "Added timer source " << source << " with duration " << ms << "ms";
+
+  return SourceSetup(source, std::move(handler));
+}
+
+std::optional<Epoll::SourceRef> Epoll::AddFd(int fd, Events events, Epoll::IoEventHandler handler) {
   ZYPAK_ASSERT(!events.empty(), << "Missing events for fd" << fd);
-  ZYPAK_ASSERT(func, << "Missing handler for fd " << fd);
+  ZYPAK_ASSERT(handler, << "Missing handler for fd " << fd);
 
-  struct epoll_event evt;
-  evt.data.fd = fd;
-  evt.events = 0;
-
+  int epoll_events = 0;
   if (events.contains(Events::Status::kRead)) {
-    evt.events |= EPOLLIN;
+    epoll_events |= EPOLLIN;
   }
   if (events.contains(Events::Status::kWrite)) {
-    evt.events |= EPOLLOUT;
+    epoll_events |= EPOLLOUT;
   }
 
-  if (epoll_ctl(epfd_.get(), EPOLL_CTL_ADD, fd, &evt) == -1) {
-    Errno() << "Failed to add " << fd << " to epoll";
+  sd_event_source* source;
+  if (int err = sd_event_add_io(event_.get(), &source, fd, epoll_events, &HandleIoEvent, nullptr);
+      err < 0) {
+    Errno(-err) << "Failed to add I/O event";
     return {};
   }
 
-  fd_data_.emplace(fd, FdData{false, std::move(func)});
-  return Id{fd};
+  Debug() << "Adding I/O source " << source << " for " << fd;
+  return SourceSetup(source, std::move(handler));
 }
 
-std::optional<Epoll::Id> Epoll::TakeFd(unique_fd fd, Events events, Epoll::EventsHandler func) {
-  if (auto id = AddFd(fd.get(), events, func)) {
-    fd_data_[fd.release()].owned = true;
-    return id;
+std::optional<Epoll::SourceRef> Epoll::TakeFd(unique_fd fd, Events events,
+                                              Epoll::IoEventHandler handler) {
+  auto source = AddFd(fd.get(), events, std::move(handler));
+  if (!source) {
+    return {};
   }
 
-  return {};
+  sd_event_source_set_io_fd_own(source->source_, true);
+  return source;
 }
 
-bool Epoll::Remove(Epoll::Id id) {
-  Debug() << "Remove fd " << id.fd_;
+Epoll::WaitResult Epoll::Wait() {
+  std::array<struct pollfd, 2> pfds;
 
-  auto it = fd_data_.find(id.fd_);
-  if (it == fd_data_.end()) {
-    Log() << "Cannot remove non-existent fd " << id.fd_;
-    return false;
-  }
+  pfds[0].fd = sd_event_get_fd(event_.get());
+  ZYPAK_ASSERT_SD_ERROR(pfds[0].fd);
 
-  if (epoll_ctl(epfd_.get(), EPOLL_CTL_DEL, id.fd_, nullptr) == -1) {
-    Errno() << "Failed to delete " << id.fd_ << " from epoll";
-    return false;
-  }
+  pfds[1].fd = notify_defer_fd_.get();
 
-  if (it->second.owned) {
-    close(id.fd_);
-  }
+  pfds[0].events = pfds[1].events = POLLIN;
+  pfds[0].revents = pfds[1].revents = 0;
 
-  fd_data_.erase(it);
-  return true;
-}
-
-bool Epoll::Wait(EventSet* events) {
-  events->Clear();
-
-  int ready = HANDLE_EINTR(epoll_wait(epfd_.get(), events->data(), EventSet::kMaxEvents, -1));
+  int ready = HANDLE_EINTR(poll(pfds.data(), pfds.size(), -1));
   if (ready == -1) {
-    Errno() << "Failed to wait for events from epoll";
+    Errno() << "Failed to poll on sd-event fd";
+    return WaitResult::kError;
+  }
+
+  if (ready > 0) {
+    if ((pfds[0].revents | pfds[1].revents) & (POLLHUP | POLLERR)) {
+      Log() << "sd-event fd is in an error state";
+      return WaitResult::kError;
+    }
+
+    if ((pfds[0].revents | pfds[1].revents) & POLLIN) {
+      if (pfds[1].revents & POLLIN) {
+        std::uint64_t value;
+        ZYPAK_ASSERT_WITH_ERRNO(eventfd_read(notify_defer_fd_.get(), &value) != -1);
+      }
+
+      return WaitResult::kReady;
+    }
+
+    ZYPAK_ASSERT((pfds[0].revents | pfds[1].revents) == 0,
+                 << "Unexpected revents values: " << pfds[0].revents << ' ' << pfds[1].revents);
+  }
+
+  Debug() << "Poll returned without events?";
+  return WaitResult::kIdle;
+}
+
+Epoll::DispatchResult Epoll::Dispatch() {
+  int result = sd_event_run(event_.get(), 0);
+  if (result < 0) {
+    Errno(-result) << "Failed to run event loop iteration";
+    return DispatchResult::kError;
+  } else if (result == 0) {
+    if (sd_event_get_state(event_.get()) == SD_EVENT_FINISHED) {
+      return DispatchResult::kExit;
+    }
+
+    Debug() << "Nothing to dispatch";
+  }
+
+  return DispatchResult::kContinue;
+}
+
+bool Epoll::Exit(Epoll::ExitStatus status) {
+  if (int err = sd_event_exit(event_.get(), static_cast<int>(status)); err < 0) {
+    Errno(-err) << "Failed to exit event loop";
     return false;
   }
 
-  events->count_ = ready;
   return true;
 }
 
-bool Epoll::Dispatch(const EventSet& events) {
-  for (int i = 0; i < events.count(); i++) {
-    auto event = events.data()[i];
-    const FdData& data = fd_data_[event.data.fd];
+Epoll::ExitStatus Epoll::exit_status() const {
+  int code;
+  ZYPAK_ASSERT_SD_ERROR(sd_event_get_exit_code(event_.get(), &code));
 
-    Debug() << "epoll got info for fd " << event.data.fd;
+  return static_cast<Epoll::ExitStatus>(code);
+}
 
-    if (event.events & (EPOLLIN | EPOLLOUT)) {
-      Events events = Events::Status::kNone;
+template <typename Handler>
+// static
+Epoll::SourceRef Epoll::SourceSetup(sd_event_source* source, Handler handler) {
+  sd_event_source_set_floating(source, true);
+  sd_event_source_set_userdata(source, new CallbackParams<Handler>{this, std::move(handler)});
+  sd_event_source_set_destroy_callback(
+      source, [](void* data) { delete static_cast<CallbackParams<Handler>*>(data); });
+  return SourceRef(source);
+}
 
-      if (event.events & EPOLLIN) {
-        events |= Events::Status::kRead;
-      }
-      if (event.events & EPOLLOUT) {
-        events |= Events::Status::kWrite;
-      }
+template <typename Handler, typename... Args>
+// static
+int Epoll::GenericHandler(sd_event_source* source, void* data, Args&&... args) {
+  Debug() << "Received event from " << source;
 
-      ZYPAK_ASSERT(data.func, << "Missing handler for fd " << event.data.fd);
+  auto* params = static_cast<CallbackParams<Handler>*>(data);
 
-      if (!data.func(this, events)) {
-        return false;
-      }
+  // SourceRef doesn't ref its argument, as it usually "steals" a brand-new source. However, if we
+  // don't ref it here, it'll be unref'd in SourceRef's destructor, thus unref-ing the floating
+  // reference the event loop has and likely causing memory errors.
+  sd_event_source_ref(source);
+  SourceRef source_ref(source);
 
-      if (data.once && !Remove(event.data.fd)) {
-        Log() << "Could not remove run-once event " << event.data.fd;
-      }
-    } else if (event.events & (EPOLLERR | EPOLLHUP)) {
-      Log() << "Error occurred polling on " << event.data.fd;
-      return false;
-    }
+  params->handler(std::move(source_ref), std::forward<Args>(args)...);
+
+  int enabled = -1;
+  ZYPAK_ASSERT_SD_ERROR(sd_event_source_get_enabled(source, &enabled));
+
+  if (enabled != SD_EVENT_ON) {
+    // If it's already disabled, make sure it's no longer floating so it won't leak.
+    ZYPAK_ASSERT_SD_ERROR(sd_event_source_set_floating(source, false));
   }
 
-  return true;
+  return 0;
+}
+
+// static
+int Epoll::HandleIoEvent(sd_event_source* source, int fd, std::uint32_t revents, void* data) {
+  if (revents & (EPOLLHUP | EPOLLERR)) {
+    std::string_view reason = revents & EPOLLHUP ? "connection closed" : "unknown error";
+    Log() << "Dropping " << fd << " because of " << reason;
+    return -ECONNRESET;
+  }
+
+  Events events(Events::Status::kNone);
+  if (revents & EPOLLIN) {
+    events |= Events::Status::kRead;
+  }
+  if (revents & EPOLLOUT) {
+    events |= Events::Status::kWrite;
+  }
+
+  return GenericHandler<IoEventHandler>(source, data, events);
+}
+
+// static
+int Epoll::HandleTimeEvent(sd_event_source* source, std::uint64_t us, void* data) {
+  return GenericHandler<EventHandler>(source, data);
 }
 
 }  // namespace zypak

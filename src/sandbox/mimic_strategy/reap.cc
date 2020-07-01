@@ -15,20 +15,20 @@ namespace {
 
 class ReapTimerHandler {
  public:
-  ReapTimerHandler(pid_t child_pid) : child_pid_(child_pid) {}
+  ReapTimerHandler(Epoll* epoll, pid_t child_pid) : epoll_(epoll), child_pid_(child_pid) {}
 
-  void AddToLoop(Epoll* ep) {
+  void AddToLoop() {
     constexpr int kSecondsToWaitForDeath = 2;
-    ZYPAK_ASSERT(ep->AddTimerSec(kSecondsToWaitForDeath, *this));
+    ZYPAK_ASSERT(epoll_->AddTimerSec(kSecondsToWaitForDeath, *this));
   }
 
-  bool operator()(Epoll* ep) {
+  void operator()(Epoll::SourceRef source) {
     pid_t wret = HANDLE_EINTR(waitpid(child_pid_, nullptr, WNOHANG));
     if (wret > 0) {
       // XXX: in original code this was a logged error, but can this really occur?
       ZYPAK_ASSERT(wret == child_pid_);
-      // Return now to avoid getting re-added to the event loop.
-      return true;
+      // Return before the timer is re-added.
+      return;
     }
 
     Debug() << "Wait for " << child_pid_ << " timed out, trying to kill then reap again";
@@ -38,11 +38,11 @@ class ReapTimerHandler {
     }
 
     sent_sigkill_ = true;
-    AddToLoop(ep);
-    return true;
+    AddToLoop();
   }
 
  private:
+  Epoll* epoll_;
   pid_t child_pid_;
   bool sent_sigkill_ = false;
 };
@@ -59,8 +59,8 @@ void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader) {
   Debug() << "Reap of " << child_pid;
 
   if (auto it = children->find(child_pid); it != children->end()) {
-    ReapTimerHandler reaper{child_pid};
-    reaper.AddToLoop(ep);
+    ReapTimerHandler reaper(ep, child_pid);
+    reaper.AddToLoop();
   } else {
     Log() << "Failed to find child to reap: " << child_pid;
   }

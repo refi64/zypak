@@ -6,7 +6,6 @@
 #include "sandbox/mimic_strategy/zygote.h"
 
 #include <array>
-#include <set>
 
 #include <nickle.h>
 
@@ -22,9 +21,17 @@
 
 namespace zypak::sandbox::mimic_strategy {
 
-namespace {
+// static
+std::optional<MimicZygoteRunner> MimicZygoteRunner::Create() {
+  auto epoll = Epoll::Create();
+  if (!epoll) {
+    return {};
+  }
 
-bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
+  return MimicZygoteRunner(std::move(*epoll));
+}
+
+void MimicZygoteRunner::HandleMessage(Epoll::SourceRef source, Epoll::Events events) {
   static std::array<std::byte, kZygoteMaxMessageLength> buffer;
   std::vector<unique_fd> fds;
 
@@ -39,10 +46,12 @@ bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
     }
 
     if (len == 0 || errno == ECONNRESET) {
-      return false;
+      epoll_.Exit(Epoll::ExitStatus::kSuccess);
+    } else {
+      epoll_.Exit(Epoll::ExitStatus::kFailure);
     }
 
-    return true;
+    return;
   }
 
   nickle::buffers::ReadOnlyContainerBuffer nbuf(buffer);
@@ -51,49 +60,39 @@ bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
   ZygoteCommand command;
   if (!reader.Read<ZygoteCommandCodec>(&command)) {
     Log() << "Failed to parse host action";
-    return true;
+    return;
   }
 
   if (!fds.empty() && command != ZygoteCommand::kFork) {
     Log() << "Unexpected FDs for non-fork command";
-    return true;
+    return;
   }
 
   switch (command) {
   case ZygoteCommand::kFork:
     if (auto child = HandleFork(&reader, std::move(fds))) {
-      if (auto [_, inserted] = children->insert(*child); !inserted) {
+      if (auto [_, inserted] = children_.insert(*child); !inserted) {
         Log() << "Already tracking PID " << *child;
       }
     }
     break;
   case ZygoteCommand::kReap:
-    HandleReap(ep, children, &reader);
+    HandleReap(&epoll_, &children_, &reader);
     break;
   case ZygoteCommand::kTerminationStatus:
-    HandleTerminationStatusRequest(children, &reader);
+    HandleTerminationStatusRequest(&children_, &reader);
     break;
   case ZygoteCommand::kSandboxStatus:
     HandleSandboxStatusRequest();
     break;
   case ZygoteCommand::kForkRealPID:
     Log() << "Got kForkRealPID in main command runner";
-    return false;
+    epoll_.Exit(Epoll::ExitStatus::kFailure);
+    return;
   }
-
-  return true;
 }
 
-}  // namespace
-
-bool RunMimicZygote() {
-  auto opt_ep = Epoll::Create();
-  if (!opt_ep) {
-    return false;
-  }
-
-  auto ep = std::move(*opt_ep);
-
+bool MimicZygoteRunner::Run() {
   constexpr std::string_view kBootMessage = "ZYGOTE_BOOT";
   constexpr std::string_view kHelloMessage = "ZYGOTE_OK";
 
@@ -106,18 +105,36 @@ bool RunMimicZygote() {
     return false;
   }
 
-  std::set<int> children;
-
-  if (!ep.AddFd(kZygoteHostFd, std::bind(HandleZygoteMessage, &children, std::placeholders::_1))) {
+  if (!epoll_.AddFd(kZygoteHostFd, Epoll::Events::Status::kRead,
+                    std::bind(&MimicZygoteRunner::HandleMessage, this, std::placeholders::_1,
+                              std::placeholders::_2))) {
     return false;
   }
 
-  Epoll::EventSet events;
-  while (ep.Wait(&events) && ep.Dispatch(events))
-    ;
+  for (;;) {
+    switch (epoll_.Wait()) {
+    case Epoll::WaitResult::kError:
+      Log() << "Wait error, aborting mimic Zygote...";
+      return false;
+    case Epoll::WaitResult::kIdle:
+      continue;
+    case Epoll::WaitResult::kReady:
+      break;
+    }
+
+    switch (epoll_.Dispatch()) {
+    case Epoll::DispatchResult::kError:
+      Log() << "Dispatch error, aborting mimic Zygote...";
+      return false;
+    case Epoll::DispatchResult::kExit:
+      break;
+    case Epoll::DispatchResult::kContinue:
+      continue;
+    }
+  }
 
   Log() << "Quitting Zygote...";
-  return false;
+  return epoll_.exit_status() == Epoll::ExitStatus::kSuccess;
 }
 
 }  // namespace zypak::sandbox::mimic_strategy

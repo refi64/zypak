@@ -60,12 +60,12 @@ class BusThread {
   using ShutdownFlag = std::unique_ptr<std::atomic<bool>>;
 
   struct Triggers {
-    Epoll::Trigger shutdown;
-    Epoll::Trigger dispatch;
+    Epoll::TriggerSourceRef shutdown;
+    Epoll::TriggerSourceRef dispatch;
   };
 
   BusThread(BusConnection connection, SignalHandler handler, Epoll epoll,
-            ShutdownFlag shutdown_flag, Triggers triggers);
+            ShutdownFlag shutdown_flag, Triggers tasks);
 
   void ThreadMain();
 

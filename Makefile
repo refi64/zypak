@@ -1,11 +1,15 @@
 .PHONY : compile_flags.txt
 
+PKGS := dbus-1 libsystemd
+
 CXX := clang++
 CXXFLAGS := \
-		-pthread -Inickle -Isrc -std=c++17 -Wall -Werror -g \
-		$(shell pkg-config --cflags dbus-1)
+		-fstack-protector-all -Wall -Werror \
+		-std=c++17 -g -pthread \
+		-Inickle -Isrc \
+		$(shell pkg-config --cflags $(PKGS))
 
-DBUS_LIBS := $(shell pkg-config --libs dbus-1)
+LDLIBS := $(shell pkg-config --libs $(PKGS))
 
 # CXXFLAGS += -Wno-sign-compare -Wno-unused-result
 # CXX := g++
@@ -30,7 +34,7 @@ base_SOURCES := \
 $(call build_stlib,base)
 
 dbus_NAME := dbus
-dbus_PUBLIC_LIBS := $(DBUS_LIBS)
+dbus_PUBLIC_LIBS := $(LDLIBS)
 dbus_CXXFLAGS := -fPIC  # for usage in the preload libs
 dbus_SOURCES := \
 	bus.cc \

@@ -37,16 +37,28 @@ class DebugContext {
 // Output logging streams. All log to stderr, but Errno also prints the string value of
 // POSIX errno.
 debug_internal::LogStream Log();
-debug_internal::LogStream Errno();
+debug_internal::LogStream Errno(int value = 0);
 debug_internal::LogStream Debug();
 
-#define ZYPAK_ASSERT(cond, ...)                                                 \
+#define ZYPAK_ASSERT_BASE(cond, setup, ...)                                     \
   do {                                                                          \
     if (!(cond)) {                                                              \
+      setup;                                                                    \
       ::zypak::Log() << __FILE__ << ":" << __LINE__ << "(" << __func__ << "): " \
-                     << "assertion failed: " #cond __VA_ARGS__;                 \
+                     << "Assertion failed: " #cond __VA_ARGS__;                 \
       abort();                                                                  \
     }                                                                           \
+  } while (0)
+
+#define ZYPAK_ASSERT(cond, ...) ZYPAK_ASSERT_BASE(cond, , __VA_ARGS__)
+
+#define ZYPAK_ASSERT_WITH_ERRNO(cond) \
+  ZYPAK_ASSERT_BASE(cond, int zypak_errno = errno, << ": " << strerror(zypak_errno))
+
+#define ZYPAK_ASSERT_SD_ERROR(expr)                                                     \
+  do {                                                                                  \
+    int zypak_assert_r;                                                                 \
+    ZYPAK_ASSERT((zypak_assert_r = (expr)) >= 0, << ": " << strerror(-zypak_assert_r)); \
   } while (0)
 
 }  // namespace zypak

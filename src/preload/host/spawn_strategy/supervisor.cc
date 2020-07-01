@@ -49,7 +49,8 @@ bool Supervisor::InitAndAttachToBusThread(dbus::Bus* bus) {
   request_fd_ = std::move(supervisor_end);
 
   bus->loop()->Acquire()->AddFd(
-      request_fd_.get(), std::bind(&Supervisor::HandleSpawnRequest, this, std::placeholders::_1));
+      request_fd_.get(), Epoll::Events::Status::kRead,
+      std::bind(&Supervisor::HandleSpawnRequest, this, std::placeholders::_1));
   portal_.AttachToBus(bus);
 
   portal_.SubscribeToSpawnStarted(
@@ -208,7 +209,7 @@ void Supervisor::HandleSpawnExited(dbus::FlatpakPortalProxy::SpawnExitedMessage 
   data->exit_status = message.exit_status;
 }
 
-bool Supervisor::HandleSpawnRequest(Epoll* unsafe_ep) {
+void Supervisor::HandleSpawnRequest(Epoll::SourceRef source) {
   // Include the null terminator.
   std::array<std::byte, kZypakSupervisorSpawnRequest.size() + 1> buffer;
   std::vector<unique_fd> fds;
@@ -221,23 +222,23 @@ bool Supervisor::HandleSpawnRequest(Epoll* unsafe_ep) {
   options.pid = &pid;
   if (ssize_t bytes_read = Socket::Read(request_fd_.get(), &buffer, options); bytes_read == -1) {
     Errno() << "Failed to read spawn request";
-    return true;
+    return;
   }
 
   Debug() << "Read spawn request";
 
   if (kZypakSupervisorSpawnRequest != reinterpret_cast<const char*>(buffer.data())) {
     Log() << "Invalid supervisor spawn request data";
-    return true;
+    return;
   }
 
   if (fds.size() != 1) {
     Log() << "Expected one of from supervisor client, got " << fds.size();
-    return true;
+    return;
   }
 
   FulfillSpawnRequest(std::move(fds[0]), pid);
-  return true;
+  return;
 }
 
 void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {

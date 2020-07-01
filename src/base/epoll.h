@@ -9,19 +9,22 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <unordered_map>
+
+#include <systemd/sd-event.h>
 
 #include "base/unique_fd.h"
 
 namespace zypak {
 
-// A C++-friendly wrapper over the epoll APIs.
+// A C++-friendly wrapper over sd-event. (NOTE: The name is a legacy holdover.)
 class Epoll {
  public:
   Epoll(const Epoll& other) = delete;
   Epoll(Epoll&& other) = default;
-  ~Epoll();
+  ~Epoll() {}
 
   static std::optional<Epoll> Create();
 
@@ -56,107 +59,109 @@ class Epoll {
     Status status_;
   };
 
-  class Id {
-   private:
-    Id(int fd) : fd_(fd) {}
-    int fd_;
-    friend class Epoll;
-  };
-
-  class Trigger {
+  class SourceRef {
    public:
-    bool Add(std::uint64_t count = 1);
+    SourceRef(const SourceRef& other) : source_(sd_event_source_ref(other.source_)) {}
+    SourceRef(SourceRef&& other) : source_(other.source_) { other.source_ = nullptr; }
+    ~SourceRef() { sd_event_source_unref(source_); }
 
-    Id id() const { return id_; }
+    friend void swap(SourceRef& a, SourceRef& b) {
+      using std::swap;
+      swap(a.source_, b.source_);
+    }
+
+    SourceRef& operator=(SourceRef other) {
+      swap(*this, other);
+      return *this;
+    }
+
+    enum State { kActiveForever, kActiveOnce, kDisabled };
+    State state() const;
+
+    void Disable();
 
    private:
-    Trigger(Id id) : id_(id) {}
-    Id id_;
+    explicit SourceRef(sd_event_source* source) : source_(source) {}
+
+    sd_event_source* source_;
+
     friend class Epoll;
+    friend class TriggerSourceRef;
   };
 
-  class TriggerReceiver {
+  class TriggerSourceRef {
    public:
-    std::optional<std::uint64_t> GetAndClear();
+    void Trigger();
 
-    Trigger trigger() const { return Trigger(id_); }
-    Id id() const { return id_; }
+    const SourceRef& source() const { return source_; }
 
-   private:
-    TriggerReceiver(Id id) : id_(id) {}
-    Id id_;
-    friend class Epoll;
-  };
-
-  class EventSet {
-   public:
-    EventSet() : count_(0) {}
-    EventSet(const EventSet& other) = delete;
-    EventSet(EventSet&& other) = default;
-
-    void Clear() { count_ = 0; }
-    std::size_t count() const { return count_; }
+    SourceRef::State state() const { return source_.state(); }
+    void Disable() { source_.Disable(); }
 
    private:
-    static constexpr int kMaxEvents = 64;
+    TriggerSourceRef(SourceRef source, int notify_defer_fd)
+        : source_(std::move(source)), notify_defer_fd_(notify_defer_fd) {}
 
-    epoll_event* data() { return events_.data(); }
-    const epoll_event* data() const { return events_.data(); }
-
-    std::array<epoll_event, kMaxEvents> events_;
-    std::size_t count_;
+    SourceRef source_;
+    int notify_defer_fd_;
 
     friend class Epoll;
   };
 
-  using Handler = std::function<bool(Epoll*)>;
-  using EventsHandler = std::function<bool(Epoll*, Events)>;
-  using TriggerHandler = std::function<bool(Epoll*, TriggerReceiver)>;
-
-  // Add a counting trigger that fires (and clears) once the value is at least 1.
-  std::optional<TriggerReceiver> AddTrigger(std::uint64_t initial, TriggerHandler func);
-  std::optional<TriggerReceiver> AddTrigger(TriggerHandler func) {
-    return AddTrigger(0, std::move(func));
-  }
-  std::optional<TriggerReceiver> AddTriggerOnce(TriggerHandler func);
+  using EventHandler = std::function<void(SourceRef)>;
+  using IoEventHandler = std::function<void(SourceRef, Events)>;
 
   // Adds a function that should run in the event loop's thread and environment.
-  std::optional<Id> AddTask(Handler func);
+  std::optional<SourceRef> AddTask(EventHandler handler);
+
+  // TODO: document
+  std::optional<TriggerSourceRef> AddTrigger(EventHandler handler);
 
   // Add a new timer that fires after the given # of seconds / milliseconds.
-  std::optional<Id> AddTimerSec(int seconds, Handler func, bool repeat = false);
-  std::optional<Id> AddTimerMs(int ms, Handler func, bool repeat = false);
+  std::optional<SourceRef> AddTimerSec(int seconds, EventHandler handler);
+  std::optional<SourceRef> AddTimerMs(int ms, EventHandler handler);
 
   // Add a new file descriptor to poll. The file descriptor is not owned by the Epoll instance.
-  std::optional<Id> AddFd(int fd, Events events, EventsHandler func);
-  std::optional<Id> AddFd(int fd, Handler func) {
-    return AddFd(fd, Events::Status::kRead, [func](Epoll* ep, Events events) { return func(ep); });
-  }
+  std::optional<SourceRef> AddFd(int fd, Events events, IoEventHandler handler);
+
   // Add a new file descriptor to poll. The file descriptor will be owned by the Epoll instance.
-  std::optional<Id> TakeFd(unique_fd fd, Events events, EventsHandler func);
-  std::optional<Id> TakeFd(unique_fd fd, Handler func) {
-    return TakeFd(std::move(fd), Events::Status::kRead,
-                  [func](Epoll* ep, Events events) { return func(ep); });
-  }
+  std::optional<SourceRef> TakeFd(unique_fd fd, Events events, IoEventHandler handler);
 
-  // Remove an ID generated by an Add* call.
-  bool Remove(Id id);
+  enum class WaitResult { kReady, kIdle, kError };
+  enum class DispatchResult { kContinue, kExit, kError };
 
-  bool Wait(EventSet* events);
-  bool Dispatch(const EventSet& events);
+  WaitResult Wait();
+  DispatchResult Dispatch();
+
+  enum class ExitStatus { kSuccess, kFailure };
+
+  bool Exit(ExitStatus status);
+  ExitStatus exit_status() const;
 
  private:
-  Epoll(unique_fd epfd);
+  Epoll(sd_event* event, unique_fd notify_defer_fd);
 
-  unique_fd epfd_;
-
-  struct FdData {
-    bool owned;
-    EventsHandler func;
-    bool once = false;
+  struct SdEventDeleter {
+    void operator()(sd_event* event) { sd_event_unref(event); }
   };
 
-  std::unordered_map<int, FdData> fd_data_;
+  std::unique_ptr<sd_event, SdEventDeleter> event_;
+
+  // If the loop's epoll fd is currently being polled on by Wait, sd_event_add_defer will not
+  // awaken it, as it does not interact with the epoll fd. Therefore, we create an eventfd that is
+  // polled on along with the epoll fd, that way it'll cause Wait to return.
+  // Note that, tasks and triggers could just use eventfds instead, but this is a bit more
+  // efficient since it's not creating and polling on as many fds.
+  unique_fd notify_defer_fd_;
+
+  template <typename Handler>
+  SourceRef SourceSetup(sd_event_source* source, Handler handler);
+
+  template <typename Handler, typename... Args>
+  static int GenericHandler(sd_event_source* source, void* data, Args&&... args);
+
+  static int HandleIoEvent(sd_event_source* source, int fd, std::uint32_t revents, void* data);
+  static int HandleTimeEvent(sd_event_source* source, std::uint64_t us, void* data);
 };
 
 }  // namespace zypak
