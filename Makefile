@@ -30,6 +30,7 @@ base_SOURCES := \
 	evloop.cc \
 	fd_map.cc \
 	socket.cc \
+	strace.cc \
 
 $(call build_stlib,base)
 

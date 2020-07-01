@@ -12,6 +12,7 @@
 #include "base/container_util.h"
 #include "base/debug.h"
 #include "base/env.h"
+#include "base/strace.h"
 
 namespace zypak::sandbox {
 
@@ -24,8 +25,15 @@ constexpr std::string_view kSandboxNsEnabled = "1";
 std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_map) const {
   std::vector<std::string> wrapper;
 
-  // wrapper.push_back("strace");
-  // wrapper.push_back("-F");
+  if (Strace::ShouldTraceTarget(Strace::Target::kChild)) {
+    wrapper.push_back("strace");
+    wrapper.push_back("-f");
+
+    if (auto filter = Strace::GetSyscallFilter()) {
+      wrapper.push_back("-e");
+      wrapper.push_back(filter->data());
+    }
+  }
 
   wrapper.push_back(helper_path_);
   wrapper.push_back("child");

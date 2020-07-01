@@ -15,13 +15,14 @@
 #include <vector>
 
 #include "base/base.h"
+#include "base/container_util.h"
 #include "base/debug.h"
 #include "base/env.h"
 #include "base/fd_map.h"
 #include "base/socket.h"
 #include "base/str_util.h"
+#include "base/strace.h"
 #include "dbus/bus.h"
-#include "dbus/flatpak_portal_proxy.h"
 #include "helper/determine_strategy.h"
 
 using namespace zypak;
@@ -105,6 +106,23 @@ bool StubSandboxChrootHelper(unique_fd fd) {
   return true;
 }
 
+std::string GetPreload(std::string_view mode, std::string_view libdir) {
+  std::vector<std::string> preload_names;
+  std::vector<std::string> preload_libs;
+
+  preload_names.push_back(mode.data());
+  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+    preload_names.push_back(std::string(mode) + "-spawn-strategy");
+  }
+
+  for (std::string_view name : preload_names) {
+    fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name.data() + ".so");
+    preload_libs.push_back(path.string());
+  }
+
+  return Join(preload_libs.begin(), preload_libs.end(), ":");
+}
+
 int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-helper");
   DebugContext::instance()->LoadFromEnvironment();
@@ -125,10 +143,10 @@ int main(int argc, char** argv) {
     it++;
   }
 
-  if (mode == "host" || mode == "test") {
+  if (mode == "host" || mode == "spawn-strategy-test") {
     DetermineZygoteStrategy();
 
-    if (mode == "test") {
+    if (mode == "spawn-strategy-test") {
       return Env::Test(Env::kZypakZygoteStrategySpawn);
     }
   } else if (mode == "child") {
@@ -145,36 +163,33 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  ArgsView command(it, args.end());
-
   auto bindir = Env::Require(Env::kZypakBin);
   auto libdir = Env::Require(Env::kZypakLib);
 
   auto path = std::string(bindir) + ":" + std::string(Env::Require("PATH"));
   Env::Set("PATH", path);
 
-  std::vector<std::string> preload_names;
-  std::vector<std::string> preload_libs;
-
-  preload_names.push_back(mode.data());
-  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
-    preload_names.push_back(std::string(mode) + "-spawn-strategy");
-  }
-
-  for (std::string_view name : preload_names) {
-    fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name.data() + ".so");
-    preload_libs.push_back(path.string());
-  }
-
-  auto preload = Join(preload_libs.begin(), preload_libs.end(), ":");
+  std::string preload = GetPreload(mode, libdir);
   Debug() << "Preload is: " << preload;
 
-  if (enable_strace) {
-    auto strace_it = command.insert(command.begin(), "strace");
-    strace_it = command.insert(strace_it + 1, "-f");
-    strace_it = command.insert(strace_it + 1, "-E");
-    // XXX
-    strace_it = command.insert(strace_it + 1, (new std::string("LD_PRELOAD="s + preload))->data());
+  ArgsView command(it, args.end());
+
+  if (mode == "host" && Strace::ShouldTraceTarget(Strace::Target::kHost)) {
+    ArgsView new_command;
+    new_command.push_back("strace");
+    new_command.push_back("-f");
+
+    new_command.push_back("-E");
+    // XXX: Ugly hack to avoid copying when *not* using strace.
+    new_command.push_back((new std::string("LD_PRELOAD="s + preload))->data());
+
+    if (auto filter = Strace::GetSyscallFilter()) {
+      new_command.push_back("-e");
+      new_command.push_back(*filter);
+    }
+
+    ExtendContainerCopy(&new_command, command);
+    command = std::move(new_command);
   } else {
     Env::Set("LD_PRELOAD", preload);
   }

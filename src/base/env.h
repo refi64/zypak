@@ -6,6 +6,7 @@
 #pragma once
 
 #include <optional>
+#include <vector>
 
 #include "base/base.h"
 
@@ -27,6 +28,8 @@ class Env {
   static constexpr std::string_view kZypakZygoteStrategySpawn = "ZYPAK_ZYGOTE_STRATEGY_SPAWN";
 
   static constexpr std::string_view kZypakSettingEnableDebug = "ZYPAK_DEBUG";
+  static constexpr std::string_view kZypakSettingStrace = "ZYPAK_STRACE";
+  static constexpr std::string_view kZypakSettingStraceFilter = "ZYPAK_STRACE_FILTER";
   static constexpr std::string_view kZypakSettingAllowNetwork = "ZYPAK_ALLOW_NETWORK";
   static constexpr std::string_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
   static constexpr std::string_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
