@@ -156,7 +156,7 @@ Supervisor::FindStubPidData(StubPid stub,
                             const std::unordered_map<StubPid, StubPidData>& stub_pids_data) {
   auto it = stub_pids_data.find(stub);
   if (it == stub_pids_data.end()) {
-    Log() << "Can't find stub pid data " << stub.pid;
+    Debug() << "Can't find stub pid data " << stub.pid;
     return nullptr;
   }
 
@@ -318,7 +318,7 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
   spawn.options.sandbox_flags =
       static_cast<dbus::FlatpakPortalProxy::SpawnOptions::SandboxFlags>(sandbox_flags);
 
-  Debug() << "Got request to run: " << Join(spawn.argv.begin(), spawn.argv.end());
+  Log() << "Running: " << Join(spawn.argv.begin(), spawn.argv.end());
 
   auto stub_pids_data = stub_pids_data_.Acquire(GuardReleaseNotify::kNone);
   auto it = stub_pids_data->emplace(stub_pid, StubPidData{}).first;

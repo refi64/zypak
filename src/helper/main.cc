@@ -137,12 +137,6 @@ int main(int argc, char** argv) {
 
   std::string_view mode = *it++;
 
-  bool enable_strace = false;
-  if (it != args.end() && *it == "-s") {
-    enable_strace = true;
-    it++;
-  }
-
   if (mode == "host" || mode == "spawn-strategy-test") {
     DetermineZygoteStrategy();
 

@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "base/base.h"
 #include "preload/declare_override.h"
