@@ -3,26 +3,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "fork.h"
+
+#include <signal.h>
+#include <sys/wait.h>
+
+#include <algorithm>
+#include <array>
+#include <filesystem>
+#include <vector>
+
+#include <nickle.h>
+
+#include "../socket.h"
 #include "base/base.h"
 #include "base/debug.h"
 #include "base/env.h"
 #include "base/fd_map.h"
 #include "base/str_util.h"
 #include "base/unique_fd.h"
-
-#include "../socket.h"
 #include "command.h"
-#include "fork.h"
 #include "zygote.h"
-
-#include <nickle.h>
-
-#include <algorithm>
-#include <array>
-#include <filesystem>
-#include <signal.h>
-#include <sys/wait.h>
-#include <vector>
 
 namespace fs = std::filesystem;
 

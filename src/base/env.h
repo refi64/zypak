@@ -5,12 +5,12 @@
 
 #pragma once
 
-#include "base/base.h"
-
 #include <optional>
 
+#include "base/base.h"
+
 class Env {
-public:
+ public:
   // Get the requested environment variable, returning an empty optional on failure.
   static std::optional<std::string_view> Get(std::string_view name);
   // Get the requested environment variable, aborting on failure.

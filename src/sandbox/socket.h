@@ -5,16 +5,16 @@
 
 #pragma once
 
-#include "base/base.h"
-#include "base/unique_fd.h"
-
 #include <array>
 #include <vector>
+
+#include "base/base.h"
+#include "base/unique_fd.h"
 
 // Utilities for reading and writing data to a socket.
 // 'fds' is always a vector of file descriptors being passed over a socket.
 class Socket {
-public:
+ public:
   static ssize_t Read(int fd, std::vector<std::byte>* buffer,
                       std::vector<unique_fd>* fds = nullptr);
   static ssize_t Read(int fd, std::byte* buffer, size_t size,

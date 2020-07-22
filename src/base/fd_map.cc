@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include "fd_map.h"
+
 #include "debug.h"
 
 std::optional<unique_fd> FdAssignment::Assign() {

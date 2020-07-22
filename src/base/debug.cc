@@ -4,13 +4,15 @@
 // found in the LICENSE file.
 
 #include "debug.h"
-#include "env.h"
 
 #include <errno.h>
-#include <ext/stdio_filebuf.h> // libstdc++-only
-#include <iostream>
+#include <ext/stdio_filebuf.h>  // libstdc++-only
 #include <string.h>
 #include <unistd.h>
+
+#include <iostream>
+
+#include "env.h"
 
 debug_detail::LogStream::LogStream(std::ostream* os, int print_errno)
     : std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {
@@ -45,7 +47,7 @@ class NullStream : public std::ostream {
   static NullStream instance_;
 };
 
-} // namespace
+}  // namespace
 
 NullStream NullStream::instance_;
 

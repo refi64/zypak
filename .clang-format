@@ -1,4 +1,20 @@
 AccessModifierOffset: -1
 AlwaysBreakTemplateDeclarations: true
+AlignEscapedNewlines: Left
 ColumnLimit: 100
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<nickle'
+    Priority: 3
+  - Regex: '^<[^/]+\.'
+    Priority: 1
+  - Regex: '^<.*\.'
+    Priority: 1
+  - Regex: '^<[^.]+>'
+    Priority: 2
+  - Regex: '^".*'
+    Priority: 4
+NamespaceIndentation: None
 PointerAlignment: Left
+SpacesBeforeTrailingComments: 2

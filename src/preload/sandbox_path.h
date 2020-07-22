@@ -9,7 +9,7 @@
 
 // Keeps track of the known sandbox path.
 class SandboxPath {
-public:
+ public:
   std::string_view sandbox_path() const;
   void set_sandbox_path(std::string_view path);
 
@@ -18,7 +18,7 @@ public:
 
   static SandboxPath* instance() { return &instance_; }
 
-private:
+ private:
   static SandboxPath instance_;
 
   std::string sandbox_path_;

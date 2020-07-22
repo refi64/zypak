@@ -3,11 +3,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/debug.h"
-
 #include "reap.h"
 
 #include <sys/wait.h>
+
+#include "base/debug.h"
 
 namespace {
 
@@ -45,7 +45,7 @@ class ReapTimerHandler {
   bool sent_sigkill_ = false;
 };
 
-} // namespace
+}  // namespace
 
 void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader) {
   int child_pid;

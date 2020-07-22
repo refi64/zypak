@@ -4,13 +4,15 @@
 // found in the LICENSE file.
 
 #include "epoll.h"
-#include "base/base.h"
-#include "base/debug.h"
+
+#include <sys/epoll.h>
+#include <sys/timerfd.h>
 
 #include <array>
 #include <cstring>
-#include <sys/epoll.h>
-#include <sys/timerfd.h>
+
+#include "base/base.h"
+#include "base/debug.h"
 
 /*static*/
 std::optional<Epoll> Epoll::Create() {

@@ -5,11 +5,11 @@
 
 #pragma once
 
-#include "base/unique_fd.h"
-
 #include <functional>
 #include <optional>
 #include <unordered_map>
+
+#include "base/unique_fd.h"
 
 // A C++-friendly wrapper over the epoll APIs.
 class Epoll {

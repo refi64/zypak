@@ -12,20 +12,20 @@
 namespace debug_detail {
 
 class LogStream : public std::ostream {
-public:
-  LogStream(std::ostream* os, int print_errno=false);
+ public:
+  LogStream(std::ostream* os, int print_errno = false);
   ~LogStream();
 
-private:
+ private:
   std::ostream* os_;
   int print_errno_;
 };
 
-}  // debug_detail
+}  // namespace debug_detail
 
 // Represents a global context holding debugging information.
 class DebugContext {
-public:
+ public:
   DebugContext();
   void LoadFromEnvironment();
 
@@ -39,7 +39,7 @@ public:
 
   static constexpr std::string_view kDebugEnv = "ZYPAK_DEBUG";
 
-private:
+ private:
   bool enabled_;
   std::string name_;
 
@@ -52,11 +52,11 @@ debug_detail::LogStream Log();
 debug_detail::LogStream Errno();
 debug_detail::LogStream Debug();
 
-#define ZYPAK_ASSERT(cond) \
-  do {\
-    if (!(cond)) { \
-      ::Log() << __FILE__ << ":" << __LINE__ << "(" << __func__ <<  "): " \
-              << "assertion failed: " #cond; \
-      abort(); \
-    } \
+#define ZYPAK_ASSERT(cond)                                               \
+  do {                                                                   \
+    if (!(cond)) {                                                       \
+      ::Log() << __FILE__ << ":" << __LINE__ << "(" << __func__ << "): " \
+              << "assertion failed: " #cond;                             \
+      abort();                                                           \
+    }                                                                    \
   } while (0)

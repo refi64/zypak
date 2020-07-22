@@ -4,9 +4,10 @@
 // found in the LICENSE file.
 
 #include "env.h"
-#include "debug.h"
 
 #include <cstdlib>
+
+#include "debug.h"
 
 /*static*/
 std::optional<std::string_view> Env::Get(std::string_view name) {

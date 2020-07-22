@@ -5,19 +5,17 @@
 
 #pragma once
 
-#include <set>
 #include <sys/types.h>
+
+#include <set>
 
 #include <nickle.h>
 
-enum class ZygoteTerminationStatus {
-  kNormal, kAbnormal, kKilled, kCrashed, kRunning
-};
+enum class ZygoteTerminationStatus { kNormal, kAbnormal, kKilled, kCrashed, kRunning };
 
-struct ZygoteTerminationStatusCodec : nickle::codecs::Enumerated<ZygoteTerminationStatus,
-                                                           int32_t,
-                                                           ZygoteTerminationStatus::kNormal,
-                                                           ZygoteTerminationStatus::kRunning> {};
+struct ZygoteTerminationStatusCodec
+    : nickle::codecs::Enumerated<ZygoteTerminationStatus, int32_t, ZygoteTerminationStatus::kNormal,
+                                 ZygoteTerminationStatus::kRunning> {};
 
 void HandleTerminationStatusRequest(std::set<pid_t>* children, nickle::Reader* reader);
 void HandleSandboxStatusRequest();

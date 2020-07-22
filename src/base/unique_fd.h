@@ -5,8 +5,9 @@
 
 #pragma once
 
-#include <algorithm>
 #include <unistd.h>
+
+#include <algorithm>
 
 // An owned file descriptor, closed on object destruction.
 class unique_fd {

@@ -15,12 +15,12 @@ using namespace std::literals::string_view_literals;
 #define ATTR_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 
 // Inspired by the macro in base/posix/eintr_wrapper.h
-#define HANDLE_EINTR(expr) \
-  ({ \
-    int eintr_wrapper_counter = 0; \
-    decltype(expr) eintr_wrapper_result; \
-    do { \
-      eintr_wrapper_result = (expr); \
+#define HANDLE_EINTR(expr)                                                                   \
+  ({                                                                                         \
+    int eintr_wrapper_counter = 0;                                                           \
+    decltype(expr) eintr_wrapper_result;                                                     \
+    do {                                                                                     \
+      eintr_wrapper_result = (expr);                                                         \
     } while (eintr_wrapper_result == -1 && errno == EINTR && eintr_wrapper_counter++ < 100); \
-    eintr_wrapper_result; \
+    eintr_wrapper_result;                                                                    \
   })

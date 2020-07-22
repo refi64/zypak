@@ -4,11 +4,13 @@
 // found in the LICENSE file.
 
 #include "socket.h"
-#include "base/debug.h"
+
+#include <sys/socket.h>
 
 #include <cstring>
 #include <memory>
-#include <sys/socket.h>
+
+#include "base/debug.h"
 
 namespace {
 
@@ -25,7 +27,7 @@ class ControlBufferSpace {
   size_t fd_buffer_size;
 };
 
-} // namespace
+}  // namespace
 
 /*static*/
 ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
@@ -122,6 +124,6 @@ bool Socket::Write(int fd, const std::vector<std::byte>& buffer,
 /*static*/
 bool Socket::Write(int fd, std::string_view buffer, const std::vector<int>* fds /*= nullptr*/) {
   return Write(fd, reinterpret_cast<const std::byte*>(buffer.data()),
-               buffer.size() + 1, // include the null terminator
+               buffer.size() + 1,  // include the null terminator
                fds);
 }

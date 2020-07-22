@@ -3,18 +3,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/base.h"
-#include "base/debug.h"
-
-#include "../socket.h"
-#include "command.h"
 #include "status.h"
-#include "zygote.h"
 
-#include <set>
 #include <sys/wait.h>
 
+#include <set>
+
 #include <nickle.h>
+
+#include "../socket.h"
+#include "base/base.h"
+#include "base/debug.h"
+#include "command.h"
+#include "zygote.h"
 
 static ZygoteTerminationStatus GetTerminationStatusForSignal(int signal) {
   if (signal == SIGINT || signal == SIGKILL || signal == SIGTERM) {

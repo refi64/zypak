@@ -7,11 +7,7 @@
 
 #include <nickle.h>
 
-enum class ZygoteCommand {
-  kFork, kReap, kTerminationStatus, kSandboxStatus, kForkRealPID
-};
+enum class ZygoteCommand { kFork, kReap, kTerminationStatus, kSandboxStatus, kForkRealPID };
 
-struct ZygoteCommandCodec : nickle::codecs::Enumerated<ZygoteCommand,
-                                                 int32_t,
-                                                 ZygoteCommand::kFork,
-                                                 ZygoteCommand::kForkRealPID> {};
+struct ZygoteCommandCodec : nickle::codecs::Enumerated<ZygoteCommand, int32_t, ZygoteCommand::kFork,
+                                                       ZygoteCommand::kForkRealPID> {};

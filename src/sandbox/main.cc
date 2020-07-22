@@ -3,16 +3,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
+#include <iostream>
+#include <vector>
+
 #include "base/base.h"
 #include "base/debug.h"
 #include "base/env.h"
 #include "base/str_util.h"
-
 #include "zygote/zygote.h"
-
-#include <algorithm>
-#include <iostream>
-#include <vector>
 
 int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-sandbox");
