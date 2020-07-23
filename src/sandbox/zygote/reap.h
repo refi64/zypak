@@ -9,7 +9,7 @@
 
 #include <nickle.h>
 
-#include "../epoll.h"
 #include "base/base.h"
+#include "sandbox/epoll.h"
 
 void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader);

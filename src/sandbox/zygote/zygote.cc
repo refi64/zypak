@@ -3,22 +3,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "zygote.h"
+#include "sandbox/zygote/zygote.h"
 
 #include <array>
 #include <set>
 
 #include <nickle.h>
 
-#include "../epoll.h"
-#include "../socket.h"
 #include "base/base.h"
 #include "base/debug.h"
 #include "base/unique_fd.h"
-#include "command.h"
-#include "fork.h"
-#include "reap.h"
-#include "status.h"
+#include "sandbox/epoll.h"
+#include "sandbox/socket.h"
+#include "sandbox/zygote/command.h"
+#include "sandbox/zygote/fork.h"
+#include "sandbox/zygote/reap.h"
+#include "sandbox/zygote/status.h"
 
 static bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
   static std::array<std::byte, kZygoteMaxMessageLength> buffer;

@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 #include "base/base.h"
-#include "declare_override.h"
+#include "preload/declare_override.h"
 
 // If this process is sandboxed, pretend it's PID 1 to pass the sandbox client check.
 

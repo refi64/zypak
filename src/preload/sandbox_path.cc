@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sandbox_path.h"
+#include "preload/sandbox_path.h"
 
 static bool EndsWith(std::string_view str, std::string_view suffix) {
   return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;

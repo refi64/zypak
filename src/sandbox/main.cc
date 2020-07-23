@@ -11,7 +11,7 @@
 #include "base/debug.h"
 #include "base/env.h"
 #include "base/str_util.h"
-#include "zygote/zygote.h"
+#include "sandbox/zygote/zygote.h"
 
 int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-sandbox");

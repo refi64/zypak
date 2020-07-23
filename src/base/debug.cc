@@ -3,16 +3,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "debug.h"
+#include "base/debug.h"
 
 #include <errno.h>
 #include <ext/stdio_filebuf.h>  // libstdc++-only
-#include <string.h>
 #include <unistd.h>
 
+#include <cstring>
 #include <iostream>
 
-#include "env.h"
+#include "base/env.h"
 
 debug_detail::LogStream::LogStream(std::ostream* os, int print_errno)
     : std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {

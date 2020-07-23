@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "fork.h"
+#include "sandbox/zygote/fork.h"
 
 #include <signal.h>
 #include <sys/wait.h>
@@ -15,15 +15,15 @@
 
 #include <nickle.h>
 
-#include "../socket.h"
 #include "base/base.h"
 #include "base/debug.h"
 #include "base/env.h"
 #include "base/fd_map.h"
 #include "base/str_util.h"
 #include "base/unique_fd.h"
-#include "command.h"
-#include "zygote.h"
+#include "sandbox/socket.h"
+#include "sandbox/zygote/command.h"
+#include "sandbox/zygote/zygote.h"
 
 namespace fs = std::filesystem;
 
