@@ -1,6 +1,8 @@
 CXX := clang++
 CXXFLAGS := \
-  	-pthread -Inickle -Isrc -std=c++17 -Wall -Werror
+		-fstack-protector-all -Wall -Werror \
+		-std=c++17 -g -pthread \
+		-Inickle -Isrc \
 
 BUILD := build
 OBJ := $(BUILD)/obj
