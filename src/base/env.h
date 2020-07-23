@@ -24,6 +24,11 @@ class Env {
 
   static constexpr std::string_view kZypakBin = "ZYPAK_BIN";
   static constexpr std::string_view kZypakLib = "ZYPAK_LIB";
+
+  static constexpr std::string_view kZypakSettingEnableDebug = "ZYPAK_DEBUG";
+  static constexpr std::string_view kZypakSettingAllowNetwork = "ZYPAK_ALLOW_NETWORK";
+  static constexpr std::string_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
+  static constexpr std::string_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
 };
 
 }  // namespace zypak

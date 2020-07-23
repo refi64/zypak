@@ -78,8 +78,8 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
                                       FdMap fd_map) {
   namespace fs = std::filesystem;
 
-  auto bindir = Env::Require("ZYPAK_BIN");
-  auto libdir = Env::Require("ZYPAK_LIB");
+  auto bindir = Env::Require(Env::kZypakBin);
+  auto libdir = Env::Require(Env::kZypakLib);
 
   // Since /proc/self/exe now refers to zypak-sandbox rather than Chrome,
   // rewrite it.
@@ -92,16 +92,13 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
   spawn_args.push_back("flatpak-spawn");
   spawn_args.push_back("--watch-bus");
 
-  constexpr std::string_view kAllowNetworkEnv = "ZYPAK_ALLOW_NETWORK";
-  if (!Env::Test(kAllowNetworkEnv)) {
+  if (!Env::Test(Env::kZypakSettingAllowNetwork)) {
     spawn_args.push_back("--no-network");
   }
 
-  constexpr std::string_view kDisableSandboxEnv = "ZYPAK_DISABLE_SANDBOX";
-  if (!Env::Test(kDisableSandboxEnv)) {
-    constexpr std::string_view kAllowGpuEnv = "ZYPAK_ALLOW_GPU";
+  if (!Env::Test(Env::kZypakSettingDisableSandbox)) {
     if (std::find(args.begin(), args.end(), "--type=gpu-process") == args.end() ||
-        Env::Test(kAllowGpuEnv)) {
+        Env::Test(Env::kZypakSettingAllowGpu)) {
       spawn_args.push_back("--sandbox");
     }
   }
@@ -110,7 +107,7 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
   spawn_args.push_back("--env="s + Env::kZypakLib.data() + "=" + libdir.data());
 
   if (DebugContext::instance()->enabled()) {
-    spawn_args.push_back("--env="s + DebugContext::kDebugEnv.data() + "=1");
+    spawn_args.push_back("--env="s + Env::kZypakSettingEnableDebug.data() + "=1");
   }
 
   for (const auto& assignment : fd_map) {

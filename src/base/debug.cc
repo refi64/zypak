@@ -42,7 +42,7 @@ NullStream NullStream::instance_;
 DebugContext::DebugContext() : enabled_(false), name_("<unset>") {}
 
 void DebugContext::LoadFromEnvironment() {
-  if (Env::Test(kDebugEnv)) {
+  if (Env::Test(Env::kZypakSettingEnableDebug)) {
     enable();
   }
 }

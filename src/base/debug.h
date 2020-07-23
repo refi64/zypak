@@ -26,8 +26,6 @@ class DebugContext {
 
   static DebugContext* instance();
 
-  static constexpr std::string_view kDebugEnv = "ZYPAK_DEBUG";
-
  private:
   bool enabled_;
   std::string name_;
