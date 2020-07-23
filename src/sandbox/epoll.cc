@@ -14,6 +14,8 @@
 #include "base/base.h"
 #include "base/debug.h"
 
+namespace zypak::sandbox {
+
 // static
 std::optional<Epoll> Epoll::Create() {
   unique_fd epfd(epoll_create1(EPOLL_CLOEXEC));
@@ -119,3 +121,5 @@ bool Epoll::RunIteration() {
 
   return true;
 }
+
+}  // namespace zypak::sandbox

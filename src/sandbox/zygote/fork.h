@@ -15,4 +15,8 @@
 #include "base/base.h"
 #include "base/unique_fd.h"
 
+namespace zypak::sandbox {
+
 std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> fds);
+
+}

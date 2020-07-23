@@ -7,7 +7,11 @@
 
 #include <nickle.h>
 
+namespace zypak::sandbox {
+
 enum class ZygoteCommand { kFork, kReap, kTerminationStatus, kSandboxStatus, kForkRealPID };
 
 struct ZygoteCommandCodec : nickle::codecs::Enumerated<ZygoteCommand, int32_t, ZygoteCommand::kFork,
                                                        ZygoteCommand::kForkRealPID> {};
+
+}  // namespace zypak::sandbox

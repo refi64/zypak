@@ -9,6 +9,8 @@
 
 #include "base/base.h"
 
+namespace zypak {
+
 class Env {
  public:
   // Get the requested environment variable, returning an empty optional on failure.
@@ -23,3 +25,5 @@ class Env {
   static constexpr std::string_view kZypakBin = "ZYPAK_BIN";
   static constexpr std::string_view kZypakLib = "ZYPAK_LIB";
 };
+
+}  // namespace zypak

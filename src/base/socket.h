@@ -11,6 +11,8 @@
 #include "base/base.h"
 #include "base/unique_fd.h"
 
+namespace zypak {
+
 // Utilities for reading and writing data to a socket.
 // 'fds' is always a vector of file descriptors being passed over a socket.
 class Socket {
@@ -32,3 +34,5 @@ class Socket {
                     const std::vector<int>* fds = nullptr);
   static bool Write(int fd, std::string_view buffer, const std::vector<int>* fds = nullptr);
 };
+
+}  // namespace zypak

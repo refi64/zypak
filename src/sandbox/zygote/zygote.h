@@ -7,7 +7,11 @@
 
 #include <cstdint>
 
+namespace zypak::sandbox {
+
 constexpr int kZygoteHostFd = 3;
 constexpr std::size_t kZygoteMaxMessageLength = 12288;
 
 bool RunZygote();
+
+}  // namespace zypak::sandbox

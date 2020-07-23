@@ -20,6 +20,8 @@
 #include "sandbox/zygote/reap.h"
 #include "sandbox/zygote/status.h"
 
+namespace zypak::sandbox {
+
 static bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
   static std::array<std::byte, kZygoteMaxMessageLength> buffer;
   std::vector<unique_fd> fds;
@@ -109,3 +111,5 @@ bool RunZygote() {
   Log() << "Quitting Zygote...";
   return false;
 }
+
+}  // namespace zypak::sandbox

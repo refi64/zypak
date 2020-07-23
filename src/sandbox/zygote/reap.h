@@ -12,4 +12,8 @@
 #include "base/base.h"
 #include "sandbox/epoll.h"
 
+namespace zypak::sandbox {
+
 void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader);
+
+}

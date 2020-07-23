@@ -7,6 +7,8 @@
 
 #include "base/debug.h"
 
+namespace zypak {
+
 std::optional<unique_fd> FdAssignment::Assign() {
   ZYPAK_ASSERT(!fd_.invalid());
 
@@ -42,3 +44,5 @@ std::optional<FdAssignment> FdAssignment::Deserialize(std::string_view data) {
 
   return {FdAssignment(unique_fd(fd), target)};
 }
+
+}  // namespace zypak

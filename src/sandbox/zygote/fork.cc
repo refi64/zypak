@@ -27,6 +27,8 @@
 
 namespace fs = std::filesystem;
 
+namespace zypak::sandbox {
+
 void ExecZygoteChild(unique_fd pid_oracle, std::vector<std::string> command) {
   close(kZygoteHostFd);
 
@@ -228,3 +230,5 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
 
   return SpawnZygoteChild(std::move(pid_oracle), std::move(args), std::move(fd_map));
 }
+
+}  // namespace zypak::sandbox

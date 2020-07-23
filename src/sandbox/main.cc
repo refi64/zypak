@@ -13,6 +13,9 @@
 #include "base/str_util.h"
 #include "sandbox/zygote/zygote.h"
 
+using namespace zypak;
+using namespace zypak::sandbox;
+
 int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-sandbox");
   DebugContext::instance()->LoadFromEnvironment();

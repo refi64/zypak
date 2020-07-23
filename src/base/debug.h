@@ -9,6 +9,8 @@
 
 #include "base/base.h"
 
+namespace zypak {
+
 namespace debug_detail {
 
 class LogStream : public std::ostream {
@@ -52,11 +54,13 @@ debug_detail::LogStream Log();
 debug_detail::LogStream Errno();
 debug_detail::LogStream Debug();
 
-#define ZYPAK_ASSERT(cond)                                               \
-  do {                                                                   \
-    if (!(cond)) {                                                       \
-      ::Log() << __FILE__ << ":" << __LINE__ << "(" << __func__ << "): " \
-              << "assertion failed: " #cond;                             \
-      abort();                                                           \
-    }                                                                    \
+#define ZYPAK_ASSERT(cond)                                                      \
+  do {                                                                          \
+    if (!(cond)) {                                                              \
+      ::zypak::Log() << __FILE__ << ":" << __LINE__ << "(" << __func__ << "): " \
+                     << "assertion failed: " #cond;                             \
+      abort();                                                                  \
+    }                                                                           \
   } while (0)
+
+}  // namespace zypak

@@ -11,6 +11,8 @@
 
 #include "base/unique_fd.h"
 
+namespace zypak {
+
 // An FdAssignment represents an unspecified file descriptor and its desired target file
 // descriptor. It can then be "assigned" to the target, and the original file descriptor
 // will be closed.
@@ -32,3 +34,5 @@ class FdAssignment {
 
 // A set of FdAssignment instances.
 using FdMap = std::vector<FdAssignment>;
+
+}  // namespace zypak

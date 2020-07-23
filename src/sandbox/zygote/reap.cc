@@ -9,6 +9,8 @@
 
 #include "base/debug.h"
 
+namespace zypak::sandbox {
+
 namespace {
 
 class ReapTimerHandler {
@@ -63,3 +65,5 @@ void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader) {
     Log() << "Failed to find child to reap: " << child_pid;
   }
 }
+
+}  // namespace zypak::sandbox

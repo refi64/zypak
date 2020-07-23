@@ -17,6 +17,8 @@
 #include "sandbox/zygote/command.h"
 #include "sandbox/zygote/zygote.h"
 
+namespace zypak::sandbox {
+
 static ZygoteTerminationStatus GetTerminationStatusForSignal(int signal) {
   if (signal == SIGINT || signal == SIGKILL || signal == SIGTERM) {
     return ZygoteTerminationStatus::kKilled;
@@ -107,3 +109,5 @@ void HandleSandboxStatusRequest() {
     Errno() << "Failed to write sandbox status";
   }
 }
+
+}  // namespace zypak::sandbox

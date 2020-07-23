@@ -14,6 +14,8 @@
 
 #include "base/env.h"
 
+namespace zypak {
+
 debug_detail::LogStream::LogStream(std::ostream* os, int print_errno)
     : std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {
   *os_ << "[fake-sandbox: " << DebugContext::instance()->name() << "] ";
@@ -79,3 +81,5 @@ debug_detail::LogStream Debug() {
   return DebugContext::instance()->enabled() ? Log()
                                              : debug_detail::LogStream(NullStream::instance());
 }
+
+}  // namespace zypak

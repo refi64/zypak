@@ -16,6 +16,8 @@
 #include "base/fd_map.h"
 #include "base/str_util.h"
 
+using namespace zypak;
+
 namespace fs = std::filesystem;
 
 int main(int argc, char** argv) {

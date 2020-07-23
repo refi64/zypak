@@ -9,6 +9,8 @@
 
 #include "base/debug.h"
 
+namespace zypak {
+
 // static
 std::optional<std::string_view> Env::Get(std::string_view name) {
   if (auto env = getenv(name.data())) {
@@ -41,3 +43,5 @@ bool Env::Test(std::string_view name) {
     return false;
   }
 }
+
+}  // namespace zypak

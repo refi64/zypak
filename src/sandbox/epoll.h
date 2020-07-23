@@ -11,6 +11,8 @@
 
 #include "base/unique_fd.h"
 
+namespace zypak::sandbox {
+
 // A C++-friendly wrapper over the epoll APIs.
 class Epoll {
  public:
@@ -56,3 +58,5 @@ class Epoll {
 
   std::unordered_map<int, FdData> fd_data_;
 };
+
+}  // namespace zypak::sandbox

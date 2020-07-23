@@ -29,6 +29,8 @@ class ControlBufferSpace {
 
 }  // namespace
 
+namespace zypak {
+
 // static
 ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
                      std::vector<unique_fd>* fds /*= nullptr*/) {
@@ -127,3 +129,5 @@ bool Socket::Write(int fd, std::string_view buffer, const std::vector<int>* fds 
                buffer.size() + 1,  // include the null terminator
                fds);
 }
+
+}  // namespace zypak

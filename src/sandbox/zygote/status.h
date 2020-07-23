@@ -11,6 +11,8 @@
 
 #include <nickle.h>
 
+namespace zypak::sandbox {
+
 enum class ZygoteTerminationStatus { kNormal, kAbnormal, kKilled, kCrashed, kRunning };
 
 struct ZygoteTerminationStatusCodec
@@ -19,3 +21,5 @@ struct ZygoteTerminationStatusCodec
 
 void HandleTerminationStatusRequest(std::set<pid_t>* children, nickle::Reader* reader);
 void HandleSandboxStatusRequest();
+
+}  // namespace zypak::sandbox

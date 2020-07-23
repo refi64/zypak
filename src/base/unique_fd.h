@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+namespace zypak {
+
 // An owned file descriptor, closed on object destruction.
 class unique_fd {
  public:
@@ -40,3 +42,5 @@ class unique_fd {
  private:
   int fd_ = kInvalidFd;
 };
+
+}  // namespace zypak
