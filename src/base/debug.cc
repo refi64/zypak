@@ -16,20 +16,6 @@
 
 namespace zypak {
 
-debug_detail::LogStream::LogStream(std::ostream* os, int print_errno)
-    : std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {
-  *os_ << "[fake-sandbox: " << DebugContext::instance()->name() << "] ";
-}
-
-debug_detail::LogStream::~LogStream() {
-  if (print_errno_) {
-    int errno_save = errno;
-    *os_ << ": " << strerror(errno_save) << " (errno " << errno_save << ")";
-  }
-
-  *os_ << std::endl;
-}
-
 namespace {
 
 class NullStream : public std::ostream {
@@ -73,13 +59,13 @@ DebugContext* DebugContext::instance() { return &instance_; }
 
 DebugContext DebugContext::instance_;
 
-debug_detail::LogStream Log() { return debug_detail::LogStream(&std::cerr); }
+debug_internal::LogStream Log() { return debug_internal::LogStream(&std::cerr); }
 
-debug_detail::LogStream Errno() { return debug_detail::LogStream(&std::cerr, true); }
+debug_internal::LogStream Errno() { return debug_internal::LogStream(&std::cerr, true); }
 
-debug_detail::LogStream Debug() {
+debug_internal::LogStream Debug() {
   return DebugContext::instance()->enabled() ? Log()
-                                             : debug_detail::LogStream(NullStream::instance());
+                                             : debug_internal::LogStream(NullStream::instance());
 }
 
 }  // namespace zypak

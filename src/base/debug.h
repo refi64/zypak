@@ -8,22 +8,9 @@
 #include <ostream>
 
 #include "base/base.h"
+#include "base/debug_internal/log_stream.h"
 
 namespace zypak {
-
-namespace debug_detail {
-
-class LogStream : public std::ostream {
- public:
-  LogStream(std::ostream* os, int print_errno = false);
-  ~LogStream();
-
- private:
-  std::ostream* os_;
-  int print_errno_;
-};
-
-}  // namespace debug_detail
 
 // Represents a global context holding debugging information.
 class DebugContext {
@@ -50,9 +37,9 @@ class DebugContext {
 
 // Output logging streams. All log to stderr, but Errno also prints the string value of
 // POSIX errno.
-debug_detail::LogStream Log();
-debug_detail::LogStream Errno();
-debug_detail::LogStream Debug();
+debug_internal::LogStream Log();
+debug_internal::LogStream Errno();
+debug_internal::LogStream Debug();
 
 #define ZYPAK_ASSERT(cond)                                                      \
   do {                                                                          \
