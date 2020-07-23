@@ -1,13 +1,14 @@
 define build_objects_inner
 
-$(1)_SOURCE_DIR ?= src/$(1)
-$(1)_SOURCE_PATHS := $$(patsubst %,$$($(1)_SOURCE_DIR)/%,$$($(1)_SOURCES))
+$(1)_SOURCE_DIR ?= $(1)
+$(1)_SOURCE_DIR_FULL := src/$$($(1)_SOURCE_DIR)
+$(1)_SOURCE_PATHS := $$(patsubst %,$$($(1)_SOURCE_DIR_FULL)/%,$$($(1)_SOURCES))
 $(1)_OBJECTS := $$(patsubst %.cc,$(OBJ)/$(1)/%.o,$$($(1)_SOURCES))
 
 _$(1)_builddir:
 	@mkdir -p $$(dir $$($(1)_OBJECTS))
 
-$(OBJ)/$(1)/%.o $(DEP)/$(1)/%.d: $$($(1)_SOURCE_DIR)/%.cc | _$(1)_builddir
+$(OBJ)/$(1)/%.o $(DEP)/$(1)/%.d: $$($(1)_SOURCE_DIR_FULL)/%.cc | _$(1)_builddir
 	$(CXX) $(CXXFLAGS) $$($(1)_CXXFLAGS) -MD -c -o $$@ $$<
 
 -include $$($(1)_OBJECTS:.o=.d)
