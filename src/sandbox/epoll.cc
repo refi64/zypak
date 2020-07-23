@@ -14,7 +14,7 @@
 #include "base/base.h"
 #include "base/debug.h"
 
-/*static*/
+// static
 std::optional<Epoll> Epoll::Create() {
   unique_fd epfd(epoll_create1(EPOLL_CLOEXEC));
   if (epfd.invalid()) {

@@ -29,7 +29,7 @@ class ControlBufferSpace {
 
 }  // namespace
 
-/*static*/
+// static
 ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
                      std::vector<unique_fd>* fds /*= nullptr*/) {
   ZYPAK_ASSERT(buffer != nullptr);
@@ -76,13 +76,13 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
   return res;
 }
 
-/*static*/
+// static
 ssize_t Socket::Read(int fd, std::vector<std::byte>* buffer,
                      std::vector<unique_fd>* fds /*= nullptr*/) {
   return Read(fd, buffer->data(), buffer->size(), fds);
 }
 
-/*static*/
+// static
 bool Socket::Write(int fd, const std::byte* buffer, size_t size,
                    const std::vector<int>* fds /*= nullptr*/) {
   ZYPAK_ASSERT(buffer != nullptr);
@@ -115,13 +115,13 @@ bool Socket::Write(int fd, const std::byte* buffer, size_t size,
   return HANDLE_EINTR(sendmsg(fd, &msg, MSG_NOSIGNAL)) == size;
 }
 
-/*static*/
+// static
 bool Socket::Write(int fd, const std::vector<std::byte>& buffer,
                    const std::vector<int>* fds /*= nullptr*/) {
   return Write(fd, buffer.data(), buffer.size(), fds);
 }
 
-/*static*/
+// static
 bool Socket::Write(int fd, std::string_view buffer, const std::vector<int>* fds /*= nullptr*/) {
   return Write(fd, reinterpret_cast<const std::byte*>(buffer.data()),
                buffer.size() + 1,  // include the null terminator

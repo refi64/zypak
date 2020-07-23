@@ -17,5 +17,5 @@ bool SandboxPath::LooksLikeSandboxPath(std::string_view path) {
   return EndsWith(path, "/chrome-sandbox");
 }
 
-/*static*/
+// static
 SandboxPath SandboxPath::instance_;

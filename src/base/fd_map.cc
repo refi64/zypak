@@ -27,7 +27,7 @@ std::string FdAssignment::Serialize() const {
   return std::to_string(target_) + "=" + std::to_string(fd_.get());
 }
 
-/*static*/
+// static
 std::optional<FdAssignment> FdAssignment::Deserialize(std::string_view data) {
   std::string::size_type eq = data.find('=');
   if (eq == std::string::npos) {

@@ -9,7 +9,7 @@
 
 #include "base/debug.h"
 
-/*static*/
+// static
 std::optional<std::string_view> Env::Get(std::string_view name) {
   if (auto env = getenv(name.data())) {
     return {env};
@@ -18,7 +18,7 @@ std::optional<std::string_view> Env::Get(std::string_view name) {
   }
 }
 
-/*static*/
+// static
 std::string_view Env::Require(std::string_view name) {
   if (auto env = Get(name)) {
     return *env;
@@ -28,12 +28,12 @@ std::string_view Env::Require(std::string_view name) {
   }
 }
 
-/*static*/
+// static
 void Env::Set(std::string_view name, std::string_view value, bool overwrite /*=true*/) {
   ZYPAK_ASSERT(setenv(name.data(), value.data(), static_cast<int>(overwrite)) == 0);
 }
 
-/*static*/
+// static
 bool Env::Test(std::string_view name) {
   if (auto env = Get(name)) {
     return !env->empty();
