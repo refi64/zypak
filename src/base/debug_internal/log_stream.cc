@@ -5,6 +5,8 @@
 
 #include "base/debug_internal/log_stream.h"
 
+#include <unistd.h>
+
 #include <cstring>
 
 #include "base/base.h"
@@ -14,7 +16,7 @@ namespace zypak::debug_internal {
 
 LogStream::LogStream(std::ostream* os, int print_errno)
     : std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {
-  *os_ << "[fake-sandbox: " << DebugContext::instance()->name() << "] ";
+  *os_ << "[" << getpid() << ' ' << DebugContext::instance()->name() << "] ";
 }
 
 LogStream::~LogStream() {
