@@ -20,11 +20,52 @@ using namespace zypak;
 
 namespace fs = std::filesystem;
 
+using ArgsView = std::vector<std::string_view>;
+
+bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
+  FdMap fd_map;
+
+  for (; *it < last && **it != "-"; (*it)++) {
+    if (auto assignment = FdAssignment::Deserialize(**it)) {
+      fd_map.push_back(std::move(*assignment));
+      Debug() << "Assignment: " << **it;
+    } else {
+      Log() << "Invalid fd assignment: " << **it;
+      return false;
+    }
+  }
+
+  if (*it == last) {
+    Log() << "FD map ended too soon";
+    return false;
+  }
+
+  (*it)++;
+
+  std::set<int> target_fds;
+  for (auto& assignment : fd_map) {
+    if (target_fds.find(assignment.fd().get()) != target_fds.end() ||
+        target_fds.find(assignment.target()) != target_fds.end()) {
+      Log() << "Duplicate/overwriting fd assignment detected! Aborting...";
+      return false;
+    }
+
+    if (auto fd = assignment.Assign()) {
+      target_fds.insert(fd->get());
+      (void)fd->release();
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-helper");
   DebugContext::instance()->LoadFromEnvironment();
 
-  std::vector<std::string_view> args(argv + 1, argv + argc);
+  ArgsView args(argv + 1, argv + argc);
   auto it = args.begin();
 
   if (it == args.end()) {
@@ -35,40 +76,9 @@ int main(int argc, char** argv) {
   std::string_view mode = *it++;
 
   if (mode == "child") {
-    FdMap fd_map;
-
-    for (; it < args.end() && *it != "-"; it++) {
-      if (auto assignment = FdAssignment::Deserialize(*it)) {
-        fd_map.push_back(std::move(*assignment));
-        Debug() << "Assignment: " << *it;
-      } else {
-        Log() << "Invalid fd assignment: " << *it;
-        return 1;
-      }
-    }
-
-    std::set<int> target_fds;
-    for (auto& assignment : fd_map) {
-      if (target_fds.find(assignment.fd().get()) != target_fds.end() ||
-          target_fds.find(assignment.target()) != target_fds.end()) {
-        Log() << "Duplicate/overwriting fd assignment detected! Aborting...";
-        return 1;
-      }
-
-      if (auto fd = assignment.Assign()) {
-        target_fds.insert(fd->get());
-        (void)fd->release();
-      } else {
-        return 1;
-      }
-    }
-
-    if (it == args.end()) {
-      Log() << "FD map ended too soon";
+    if (!ApplyFdMapFromArgs(&it, args.end())) {
       return 1;
     }
-
-    it++;
   } else if (mode != "host") {
     Log() << "Invalid mode: " << mode;
     return 1;
@@ -92,7 +102,7 @@ int main(int argc, char** argv) {
   Env::Set("SBX_PID_NS", "1");
   Env::Set("SBX_NET_NS", "1");
 
-  std::vector<std::string_view> command(it, args.end());
+  ArgsView command(it, args.end());
 
   // Uncomment to debug via strace.
   /* auto i = command.insert(command.begin(), "strace"); */
