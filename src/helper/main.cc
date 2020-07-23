@@ -11,10 +11,12 @@
 #include <vector>
 
 #include "base/base.h"
+#include "base/container_util.h"
 #include "base/debug.h"
 #include "base/env.h"
 #include "base/fd_map.h"
 #include "base/str_util.h"
+#include "base/strace.h"
 
 using namespace zypak;
 
@@ -96,7 +98,6 @@ int main(int argc, char** argv) {
   Env::Set("PATH", path);
 
   auto preload = (fs::path(libdir) / ("libzypak-preload-"s + std::string(mode) + ".so")).string();
-  Env::Set("LD_PRELOAD", preload);
 
   Env::Set("SBX_USER_NS", "1");
   Env::Set("SBX_PID_NS", "1");
@@ -104,9 +105,25 @@ int main(int argc, char** argv) {
 
   ArgsView command(it, args.end());
 
-  // Uncomment to debug via strace.
-  /* auto i = command.insert(command.begin(), "strace"); */
-  /* command.insert(++i, "-f"); */
+  if (mode == "host" && Strace::ShouldTraceTarget(Strace::Target::kHost)) {
+    ArgsView new_command;
+    new_command.push_back("strace");
+    new_command.push_back("-f");
+
+    new_command.push_back("-E");
+    // XXX: Ugly hack to avoid copying when *not* using strace.
+    new_command.push_back((new std::string("LD_PRELOAD="s + preload))->data());
+
+    if (auto filter = Strace::GetSyscallFilter()) {
+      new_command.push_back("-e");
+      new_command.push_back(*filter);
+    }
+
+    ExtendContainerCopy(&new_command, command);
+    command = std::move(new_command);
+  } else {
+    Env::Set("LD_PRELOAD", preload);
+  }
 
   std::vector<const char*> c_argv;
   c_argv.reserve(command.size() + 1);

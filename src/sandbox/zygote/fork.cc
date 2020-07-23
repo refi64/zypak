@@ -21,6 +21,7 @@
 #include "base/fd_map.h"
 #include "base/socket.h"
 #include "base/str_util.h"
+#include "base/strace.h"
 #include "base/unique_fd.h"
 #include "sandbox/zygote/command.h"
 #include "sandbox/zygote/zygote.h"
@@ -112,6 +113,16 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
 
   for (const auto& assignment : fd_map) {
     spawn_args.push_back("--forward-fd="s + std::to_string(assignment.fd().get()));
+  }
+
+  if (Strace::ShouldTraceTarget(Strace::Target::kChild)) {
+    spawn_args.push_back("strace");
+    spawn_args.push_back("-f");
+
+    if (auto filter = Strace::GetSyscallFilter()) {
+      spawn_args.push_back("-e");
+      spawn_args.push_back(filter->data());
+    }
   }
 
   auto helper_path = fs::path(bindir.data()) / "zypak-helper";

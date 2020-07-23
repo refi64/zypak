@@ -16,6 +16,7 @@ base_SOURCES := \
 	env.cc \
 	fd_map.cc \
 	socket.cc \
+	strace.cc \
 
 $(call build_stlib,base)
 
