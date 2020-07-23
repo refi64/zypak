@@ -1,3 +1,5 @@
+.PHONY : compile_flags.txt
+
 CXX := clang++
 CXXFLAGS := \
 		-fstack-protector-all -Wall -Werror \
@@ -60,6 +62,9 @@ helper_SOURCES := \
 	main.cc \
 
 $(call build_exe,helper)
+
+compile_flags.txt :
+	echo -xc++ $(CXXFLAGS) | tr ' ' '\n' > compile_flags.txt
 
 clean :
 	rm -rf $(BUILD)
