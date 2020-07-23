@@ -14,6 +14,7 @@ base_SOURCES := \
 	debug.cc \
 	env.cc \
 	fd_map.cc \
+	socket.cc \
 
 $(call build_stlib,base)
 
@@ -33,7 +34,6 @@ sandbox_DEPS := base
 sandbox_SOURCES := \
 	epoll.cc \
 	main.cc \
-	socket.cc \
 	zygote/fork.cc \
 	zygote/reap.cc \
 	zygote/status.cc \

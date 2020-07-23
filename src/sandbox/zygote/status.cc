@@ -13,7 +13,7 @@
 
 #include "base/base.h"
 #include "base/debug.h"
-#include "sandbox/socket.h"
+#include "base/socket.h"
 #include "sandbox/zygote/command.h"
 #include "sandbox/zygote/zygote.h"
 
