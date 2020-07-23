@@ -9,7 +9,7 @@ else
   export ZYPAK_LIB="$self_dir/../lib"
 fi
 
-preload="$ZYPAK_LIB/libzypak-preload.so"
+preload="$ZYPAK_LIB/libzypak-preload-host.so"
 
 if [[ "$1" == "-d" ]]; then
   shift

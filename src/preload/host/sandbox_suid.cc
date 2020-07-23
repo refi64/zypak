@@ -7,7 +7,7 @@
 
 #include "base/base.h"
 #include "preload/declare_override.h"
-#include "preload/sandbox_path.h"
+#include "preload/host/sandbox_path.h"
 
 // Pretend that chrome-sandbox is a setuid binary.
 

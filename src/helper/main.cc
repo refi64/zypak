@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
   auto path = std::string(Env::Require("PATH")) + ":" + bindir.data();
   Env::Set("PATH", path);
 
-  auto preload = (fs::path(libdir) / "libzypak-preload.so").string();
+  auto preload = (fs::path(libdir) / "libzypak-preload-client.so").string();
   Env::Set("LD_PRELOAD", preload);
 
   Env::Set("SBX_USER_NS", "1");

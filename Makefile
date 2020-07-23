@@ -19,16 +19,25 @@ base_SOURCES := \
 
 $(call build_stlib,base)
 
-preload_NAME := zypak-preload
-preload_DEPS := base
-preload_LIBS := -ldl
-preload_SOURCES := \
-	bwrap_pid.cc \
+preload_PUBLIC_LIBS := -ldl
+
+preload_host_SOURCE_DIR := preload/host
+preload_host_NAME := zypak-preload-host
+preload_host_DEPS := preload base
+preload_host_SOURCES := \
 	exec_zypak_sandbox.cc \
 	sandbox_path.cc \
 	sandbox_suid.cc \
 
-$(call build_shlib,preload)
+$(call build_shlib,preload_host)
+
+preload_child_SOURCE_DIR := preload/child
+preload_child_NAME := zypak-preload-child
+preload_child_DEPS := preload base
+preload_child_SOURCES := \
+	bwrap_pid.cc \
+
+$(call build_shlib,preload_child)
 
 sandbox_NAME := zypak-sandbox
 sandbox_DEPS := base
@@ -56,4 +65,5 @@ install : all
 	install -Dm 755 -t $(FLATPAK_DEST)/bin zypak-wrapper.sh
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-helper
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-sandbox
-	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload.so
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host.so
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child.so
