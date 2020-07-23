@@ -53,7 +53,7 @@ clean :
 	rm -rf $(BUILD)
 
 install : all
-	install -Dm 755 zypak-wrapper.sh $(FLATPAK_DEST)/bin/zypak-wrapper
-	install -Dm 755 build/zypak-helper $(FLATPAK_DEST)/bin/zypak-helper
-	install -Dm 755 build/zypak-sandbox $(FLATPAK_DEST)/bin/zypak-sandbox
-	install -Dm 755 build/libzypak-preload.so $(FLATPAK_DEST)/lib/libzypak-preload.so
+	install -Dm 755 -t $(FLATPAK_DEST)/bin zypak-wrapper.sh
+	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-helper
+	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-sandbox
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload.so
