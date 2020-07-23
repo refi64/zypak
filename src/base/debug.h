@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <ostream>
 
 #include "base/base.h"
@@ -39,13 +40,19 @@ debug_internal::LogStream Log();
 debug_internal::LogStream Errno(int value = 0);
 debug_internal::LogStream Debug();
 
-#define ZYPAK_ASSERT(cond)                                                      \
+#define ZYPAK_ASSERT_BASE(cond, setup, ...)                                     \
   do {                                                                          \
     if (!(cond)) {                                                              \
+      setup;                                                                    \
       ::zypak::Log() << __FILE__ << ":" << __LINE__ << "(" << __func__ << "): " \
-                     << "assertion failed: " #cond;                             \
+                     << "Assertion failed: " #cond __VA_ARGS__;                 \
       abort();                                                                  \
     }                                                                           \
   } while (0)
+
+#define ZYPAK_ASSERT(cond, ...) ZYPAK_ASSERT_BASE(cond, , __VA_ARGS__)
+
+#define ZYPAK_ASSERT_WITH_ERRNO(cond) \
+  ZYPAK_ASSERT_BASE(cond, int zypak_errno = errno, << ": " << std::strerror(zypak_errno))
 
 }  // namespace zypak
