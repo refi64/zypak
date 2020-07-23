@@ -119,6 +119,7 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
 
   auto helper_path = fs::path(bindir.data()) / "zypak-helper";
   spawn_args.push_back(helper_path.string());
+  spawn_args.push_back("child");
 
   for (const auto& assignment : fd_map) {
     spawn_args.push_back(assignment.Serialize());

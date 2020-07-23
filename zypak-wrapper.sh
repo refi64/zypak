@@ -9,16 +9,4 @@ else
   export ZYPAK_LIB="$self_dir/../lib"
 fi
 
-preload="$ZYPAK_LIB/libzypak-preload-host.so"
-
-if [[ "$1" == "-d" ]]; then
-  shift
-  export ZYPAK_DEBUG=1
-fi
-
-if [[ "$1" == "-s" ]]; then
-  shift
-  exec strace -E "LD_PRELOAD=$preload" -E PATH="$ZYPAK_BIN:$PATH" "$@"
-fi
-
-LD_PRELOAD="$preload" PATH="$ZYPAK_BIN:$PATH" exec "$@"
+exec "$ZYPAK_BIN/zypak-helper" host "$@"

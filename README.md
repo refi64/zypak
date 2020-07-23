@@ -50,7 +50,7 @@ modules somewhere in your Flatpak manifest:
 
 ## Debugging
 
-- Set `ZYPAK_DEBUG=1` or pass `-d` to `zypak-wrapper` to enable debug logging.
+- Set `ZYPAK_DEBUG=1` to enable debug logging.
 - Set `ZYPAK_DISABLE_SANDBOX=1` to disable the use of the `--sandbox` argument
   (required if the Electron binary is not installed, as the sandboxed calls will be unable to locate the Electron binary).
 

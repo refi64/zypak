@@ -24,10 +24,17 @@ int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-helper");
   DebugContext::instance()->LoadFromEnvironment();
 
-  std::vector<std::string_view> args(argv, argv + argc);
-  auto it = args.begin() + 1;
+  std::vector<std::string_view> args(argv + 1, argv + argc);
+  auto it = args.begin();
 
-  {
+  if (it == args.end()) {
+    Log() << "usage: zypak-helper [host|child] ....";
+    return 1;
+  }
+
+  std::string_view mode = *it++;
+
+  if (mode == "child") {
     FdMap fd_map;
 
     for (; it < args.end() && *it != "-"; it++) {
@@ -55,33 +62,41 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
-  }
 
-  if (it == args.end()) {
-    Log() << "too few arguments";
+    if (it == args.end()) {
+      Log() << "FD map ended too soon";
+      return 1;
+    }
+
+    it++;
+  } else if (mode != "host") {
+    Log() << "Invalid mode: " << mode;
     return 1;
   }
 
-  it++;
+  if (it == args.end()) {
+    Log() << "Expected a command";
+    return 1;
+  }
+
+  auto bindir = Env::Require(Env::kZypakBin);
+  auto libdir = Env::Require(Env::kZypakLib);
+
+  auto path = std::string(bindir) + ":" + std::string(Env::Require("PATH"));
+  Env::Set("PATH", path);
+
+  auto preload = (fs::path(libdir) / ("libzypak-preload-"s + std::string(mode) + ".so")).string();
+  Env::Set("LD_PRELOAD", preload);
+
+  Env::Set("SBX_USER_NS", "1");
+  Env::Set("SBX_PID_NS", "1");
+  Env::Set("SBX_NET_NS", "1");
 
   std::vector<std::string_view> command(it, args.end());
 
   // Uncomment to debug via strace.
   /* auto i = command.insert(command.begin(), "strace"); */
   /* command.insert(++i, "-f"); */
-
-  auto bindir = Env::Require("ZYPAK_BIN");
-  auto libdir = Env::Require("ZYPAK_LIB");
-
-  auto path = std::string(Env::Require("PATH")) + ":" + bindir.data();
-  Env::Set("PATH", path);
-
-  auto preload = (fs::path(libdir) / "libzypak-preload-client.so").string();
-  Env::Set("LD_PRELOAD", preload);
-
-  Env::Set("SBX_USER_NS", "1");
-  Env::Set("SBX_PID_NS", "1");
-  Env::Set("SBX_NET_NS", "1");
 
   std::vector<const char*> c_argv;
   c_argv.reserve(command.size() + 1);
