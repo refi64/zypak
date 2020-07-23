@@ -14,15 +14,14 @@
 
 namespace zypak::debug_internal {
 
-LogStream::LogStream(std::ostream* os, int print_errno)
-    : std::ostream(os->rdbuf()), os_(os), print_errno_(print_errno) {
+LogStream::LogStream(std::ostream* os, int errno_save /*= -1*/)
+    : std::ostream(os->rdbuf()), os_(os), errno_save_(errno_save) {
   *os_ << "[" << getpid() << ' ' << DebugContext::instance()->name() << "] ";
 }
 
 LogStream::~LogStream() {
-  if (print_errno_) {
-    int errno_save = errno;
-    *os_ << ": " << strerror(errno_save) << " (errno " << errno_save << ")";
+  if (errno_save_ != 0) {
+    *os_ << ": " << std::strerror(errno_save_) << " (errno " << errno_save_ << ")";
   }
 
   *os_ << std::endl;

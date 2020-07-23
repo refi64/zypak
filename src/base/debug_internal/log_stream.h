@@ -12,12 +12,12 @@ namespace zypak::debug_internal {
 
 class LogStream : public std::ostream {
  public:
-  LogStream(std::ostream* os, int print_errno = false);
+  LogStream(std::ostream* os, int errno_save = 0);
   ~LogStream();
 
  private:
   std::ostream* os_;
-  int print_errno_;
+  int errno_save_;
 };
 
 }  // namespace zypak::debug_internal

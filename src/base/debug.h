@@ -36,7 +36,7 @@ class DebugContext {
 // Output logging streams. All log to stderr, but Errno also prints the string value of
 // POSIX errno.
 debug_internal::LogStream Log();
-debug_internal::LogStream Errno();
+debug_internal::LogStream Errno(int value = 0);
 debug_internal::LogStream Debug();
 
 #define ZYPAK_ASSERT(cond)                                                      \

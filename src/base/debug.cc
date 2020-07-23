@@ -61,7 +61,9 @@ DebugContext DebugContext::instance_;
 
 debug_internal::LogStream Log() { return debug_internal::LogStream(&std::cerr); }
 
-debug_internal::LogStream Errno() { return debug_internal::LogStream(&std::cerr, true); }
+debug_internal::LogStream Errno(int value /*= 0*/) {
+  return debug_internal::LogStream(&std::cerr, value ? value : errno);
+}
 
 debug_internal::LogStream Debug() {
   return DebugContext::instance()->enabled() ? Log()
