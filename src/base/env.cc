@@ -31,7 +31,7 @@ std::string_view Env::Require(std::string_view name) {
 }
 
 // static
-void Env::Set(std::string_view name, std::string_view value, bool overwrite /*=true*/) {
+void Env::Set(std::string_view name, std::string_view value, bool overwrite /*= true*/) {
   ZYPAK_ASSERT(setenv(name.data(), value.data(), static_cast<int>(overwrite)) == 0);
 }
 
