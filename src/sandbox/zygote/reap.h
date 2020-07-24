@@ -10,10 +10,10 @@
 #include <nickle.h>
 
 #include "base/base.h"
-#include "sandbox/epoll.h"
+#include "base/evloop.h"
 
 namespace zypak::sandbox {
 
-void HandleReap(Epoll* ep, std::set<pid_t>* children, nickle::Reader* reader);
+void HandleReap(EvLoop* ev, std::set<pid_t>* children, nickle::Reader* reader);
 
 }

@@ -12,9 +12,9 @@
 
 #include "base/base.h"
 #include "base/debug.h"
+#include "base/evloop.h"
 #include "base/socket.h"
 #include "base/unique_fd.h"
-#include "sandbox/epoll.h"
 #include "sandbox/zygote/command.h"
 #include "sandbox/zygote/fork.h"
 #include "sandbox/zygote/reap.h"
@@ -22,7 +22,7 @@
 
 namespace zypak::sandbox {
 
-static bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
+static void HandleZygoteMessage(std::set<pid_t>* children, EvLoop* ev, EvLoop::SourceRef source) {
   static std::array<std::byte, kZygoteMaxMessageLength> buffer;
   std::vector<unique_fd> fds;
 
@@ -35,10 +35,12 @@ static bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
     }
 
     if (len == 0 || errno == ECONNRESET) {
-      return false;
+      ev->Exit(EvLoop::ExitStatus::kSuccess);
+    } else {
+      ev->Exit(EvLoop::ExitStatus::kFailure);
     }
 
-    return true;
+    return;
   }
 
   nickle::buffers::ReadOnlyContainerBuffer nbuf(buffer);
@@ -47,12 +49,12 @@ static bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
   ZygoteCommand command;
   if (!reader.Read<ZygoteCommandCodec>(&command)) {
     Log() << "Failed to parse host action";
-    return true;
+    return;
   }
 
   if (!fds.empty() && command != ZygoteCommand::kFork) {
     Log() << "Unexpected FDs for non-fork command";
-    return true;
+    return;
   }
 
   switch (command) {
@@ -64,7 +66,7 @@ static bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
     }
     break;
   case ZygoteCommand::kReap:
-    HandleReap(ep, children, &reader);
+    HandleReap(ev, children, &reader);
     break;
   case ZygoteCommand::kTerminationStatus:
     HandleTerminationStatusRequest(children, &reader);
@@ -74,19 +76,16 @@ static bool HandleZygoteMessage(std::set<pid_t>* children, Epoll* ep) {
     break;
   case ZygoteCommand::kForkRealPID:
     Log() << "Got kForkRealPID in main command runner";
-    return false;
+    ev->Exit(EvLoop::ExitStatus::kFailure);
+    break;
   }
-
-  return true;
 }
 
 bool RunZygote() {
-  auto opt_ep = Epoll::Create();
-  if (!opt_ep) {
+  auto ev = EvLoop::Create();
+  if (!ev) {
     return false;
   }
-
-  auto ep = std::move(*opt_ep);
 
   constexpr std::string_view kBootMessage = "ZYGOTE_BOOT";
   constexpr std::string_view kHelloMessage = "ZYGOTE_OK";
@@ -102,14 +101,46 @@ bool RunZygote() {
 
   std::set<int> children;
 
-  if (!ep.AddFd(kZygoteHostFd, std::bind(HandleZygoteMessage, &children, std::placeholders::_1))) {
-    return false;
+  {
+    // Make sure to drop the reference, that way if the host drops off, an error will occur and the
+    // last reference will be dropped, leading to the destroy handler being called.
+    std::optional<EvLoop::SourceRef> zygote_host_ref =
+        ev->AddFd(kZygoteHostFd, EvLoop::Events::Status::kRead,
+                  std::bind(HandleZygoteMessage, &children, &*ev, std::placeholders::_1));
+    if (!zygote_host_ref) {
+      Log() << "Failed to add zygote FD to event loop";
+      return false;
+    }
+
+    Log() << "Going to run main loop";
+    zygote_host_ref->AddDestroyHandler([&ev]() {
+      Log() << "Host is gone, preparing to exit...";
+      ev->Exit(EvLoop::ExitStatus::kSuccess);
+    });
   }
 
-  while (ep.RunIteration())
-    ;
-  Log() << "Quitting Zygote...";
-  return false;
+  for (;;) {
+    switch (ev->Wait()) {
+    case EvLoop::WaitResult::kError:
+      Log() << "Wait error, aborting mimic Zygote...";
+      return false;
+    case EvLoop::WaitResult::kIdle:
+      continue;
+    case EvLoop::WaitResult::kReady:
+      break;
+    }
+
+    switch (ev->Dispatch()) {
+    case EvLoop::DispatchResult::kError:
+      Log() << "Dispatch error, aborting mimic Zygote...";
+      return false;
+    case EvLoop::DispatchResult::kExit:
+      Log() << "Quitting Zygote...";
+      return ev->exit_status() == EvLoop::ExitStatus::kSuccess;
+    case EvLoop::DispatchResult::kContinue:
+      continue;
+    }
+  }
 }
 
 }  // namespace zypak::sandbox

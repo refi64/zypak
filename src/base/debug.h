@@ -55,4 +55,10 @@ debug_internal::LogStream Debug();
 #define ZYPAK_ASSERT_WITH_ERRNO(cond) \
   ZYPAK_ASSERT_BASE(cond, int zypak_errno = errno, << ": " << std::strerror(zypak_errno))
 
+#define ZYPAK_ASSERT_SD_ERROR(expr)                                                     \
+  do {                                                                                  \
+    int zypak_assert_r;                                                                 \
+    ZYPAK_ASSERT((zypak_assert_r = (expr)) >= 0, << ": " << strerror(-zypak_assert_r)); \
+  } while (0)
+
 }  // namespace zypak

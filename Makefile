@@ -1,10 +1,14 @@
 .PHONY : compile_flags.txt
 
+LIBSYSTEMD_CFLAGS := $(shell pkg-config --cflags libsystemd)
+LIBSYSTEMD_LDLIBS := $(shell pkg-config --libs libsystemd)
+
 CXX := clang++
 CXXFLAGS := \
 		-fstack-protector-all -Wall -Werror \
 		-std=c++17 -g -pthread \
 		-Inickle -Isrc \
+		$(LIBSYSTEMD_CFLAGS)
 
 BUILD := build
 OBJ := $(BUILD)/obj
@@ -14,10 +18,12 @@ include rules.mk
 all :
 
 base_NAME := base
+base_PUBLIC_LIBS := $(LIBSYSTEMD_LDLIBS)
 base_SOURCES := \
 	debug_internal/log_stream.cc \
 	debug.cc \
 	env.cc \
+	evloop.cc \
 	fd_map.cc \
 	socket.cc \
 	strace.cc \
@@ -47,7 +53,6 @@ $(call build_shlib,preload_child)
 sandbox_NAME := zypak-sandbox
 sandbox_DEPS := base
 sandbox_SOURCES := \
-	epoll.cc \
 	main.cc \
 	zygote/fork.cc \
 	zygote/reap.cc \
