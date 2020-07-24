@@ -12,7 +12,7 @@
 #include "base/base.h"
 #include "base/evloop.h"
 
-namespace zypak::sandbox {
+namespace zypak::sandbox::mimic_strategy {
 
 void HandleReap(EvLoop* ev, std::set<pid_t>* children, nickle::Reader* reader);
 

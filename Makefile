@@ -54,10 +54,10 @@ sandbox_NAME := zypak-sandbox
 sandbox_DEPS := base
 sandbox_SOURCES := \
 	main.cc \
-	zygote/fork.cc \
-	zygote/reap.cc \
-	zygote/status.cc \
-	zygote/zygote.cc \
+	mimic_strategy/fork.cc \
+	mimic_strategy/reap.cc \
+	mimic_strategy/status.cc \
+	mimic_strategy/zygote.cc \
 
 $(call build_exe,sandbox)
 

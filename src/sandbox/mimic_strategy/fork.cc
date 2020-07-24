@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sandbox/zygote/fork.h"
+#include "sandbox/mimic_strategy/fork.h"
 
 #include <signal.h>
 #include <sys/wait.h>
@@ -23,12 +23,12 @@
 #include "base/str_util.h"
 #include "base/strace.h"
 #include "base/unique_fd.h"
-#include "sandbox/zygote/command.h"
-#include "sandbox/zygote/zygote.h"
+#include "sandbox/mimic_strategy/command.h"
+#include "sandbox/mimic_strategy/zygote.h"
 
 namespace fs = std::filesystem;
 
-namespace zypak::sandbox {
+namespace zypak::sandbox::mimic_strategy {
 
 void ExecZygoteChild(unique_fd pid_oracle, std::vector<std::string> command) {
   close(kZygoteHostFd);
@@ -240,4 +240,4 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
   return SpawnZygoteChild(std::move(pid_oracle), std::move(args), std::move(fd_map));
 }
 
-}  // namespace zypak::sandbox
+}  // namespace zypak::sandbox::mimic_strategy

@@ -15,7 +15,7 @@
 #include "base/base.h"
 #include "base/unique_fd.h"
 
-namespace zypak::sandbox {
+namespace zypak::sandbox::mimic_strategy {
 
 std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> fds);
 

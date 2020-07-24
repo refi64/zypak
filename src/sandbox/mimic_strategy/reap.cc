@@ -3,13 +3,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sandbox/zygote/reap.h"
+#include "sandbox/mimic_strategy/reap.h"
 
 #include <sys/wait.h>
 
 #include "base/debug.h"
 
-namespace zypak::sandbox {
+namespace zypak::sandbox::mimic_strategy {
 
 namespace {
 
@@ -66,4 +66,4 @@ void HandleReap(EvLoop* ev, std::set<pid_t>* children, nickle::Reader* reader) {
   }
 }
 
-}  // namespace zypak::sandbox
+}  // namespace zypak::sandbox::mimic_strategy

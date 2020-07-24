@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sandbox/zygote/status.h"
+#include "sandbox/mimic_strategy/status.h"
 
 #include <sys/wait.h>
 
@@ -14,10 +14,10 @@
 #include "base/base.h"
 #include "base/debug.h"
 #include "base/socket.h"
-#include "sandbox/zygote/command.h"
-#include "sandbox/zygote/zygote.h"
+#include "sandbox/mimic_strategy/command.h"
+#include "sandbox/mimic_strategy/zygote.h"
 
-namespace zypak::sandbox {
+namespace zypak::sandbox::mimic_strategy {
 
 static ZygoteTerminationStatus GetTerminationStatusForSignal(int signal) {
   if (signal == SIGINT || signal == SIGKILL || signal == SIGTERM) {
@@ -110,4 +110,4 @@ void HandleSandboxStatusRequest() {
   }
 }
 
-}  // namespace zypak::sandbox
+}  // namespace zypak::sandbox::mimic_strategy
