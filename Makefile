@@ -3,12 +3,15 @@
 LIBSYSTEMD_CFLAGS := $(shell pkg-config --cflags libsystemd)
 LIBSYSTEMD_LDLIBS := $(shell pkg-config --libs libsystemd)
 
+DBUS_CFLAGS := $(shell pkg-config --cflags dbus-1)
+DBUS_LDLIBS := $(shell pkg-config --libs dbus-1)
+
 CXX := clang++
 CXXFLAGS := \
 		-fstack-protector-all -Wall -Werror \
 		-std=c++17 -g -pthread \
 		-Inickle -Isrc \
-		$(LIBSYSTEMD_CFLAGS)
+		$(LIBSYSTEMD_CFLAGS) $(DBUS_CFLAGS)
 
 BUILD := build
 OBJ := $(BUILD)/obj
@@ -29,6 +32,17 @@ base_SOURCES := \
 	strace.cc \
 
 $(call build_stlib,base)
+
+dbus_NAME := dbus
+dbus_PUBLIC_LIBS := $(DBUS_LDLIBS)
+dbus_SOURCES := \
+	bus.cc \
+	bus_error.cc \
+	bus_readable_message.cc \
+	bus_writable_message.cc \
+	internal/bus_thread.cc \
+
+$(call build_stlib,dbus)
 
 preload_PUBLIC_LIBS := -ldl
 
@@ -62,7 +76,6 @@ sandbox_SOURCES := \
 $(call build_exe,sandbox)
 
 helper_NAME := zypak-helper
-helper_DEPS := base
 helper_SOURCES := \
 	main.cc \
 
