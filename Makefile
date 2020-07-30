@@ -40,6 +40,7 @@ dbus_SOURCES := \
 	bus_error.cc \
 	bus_readable_message.cc \
 	bus_writable_message.cc \
+	flatpak_portal_proxy.cc \
 	internal/bus_thread.cc \
 
 $(call build_stlib,dbus)
