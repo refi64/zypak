@@ -77,6 +77,7 @@ sandbox_SOURCES := \
 $(call build_exe,sandbox)
 
 helper_NAME := zypak-helper
+helper_DEPS := dbus base
 helper_SOURCES := \
 	main.cc \
 

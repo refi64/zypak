@@ -17,12 +17,51 @@
 #include "base/fd_map.h"
 #include "base/str_util.h"
 #include "base/strace.h"
+#include "dbus/bus.h"
+#include "dbus/flatpak_portal_proxy.h"
 
 using namespace zypak;
 
 namespace fs = std::filesystem;
 
 using ArgsView = std::vector<std::string_view>;
+
+void DetermineZygoteStrategy() {
+  Debug() << "Determining sandbox strategy...";
+
+  if (auto spawn_strategy = Env::Get(Env::kZypakZygoteStrategySpawn)) {
+    Log() << "Using spawn strategy test " << *spawn_strategy << " as set by environment";
+    return;
+  }
+
+  dbus::Bus* bus = dbus::Bus::Acquire();
+  ZYPAK_ASSERT(bus);
+
+  dbus::FlatpakPortalProxy portal(bus);
+
+  constexpr std::uint32_t kMinPortalSupportingSpawnStarted = 4;
+
+  auto version = portal.GetVersionBlocking();
+  if (!version) {
+    Log() << "WARNING: Unknown portal version";
+    return;
+  } else if (*version < kMinPortalSupportingSpawnStarted) {
+    Log() << "Portal v4 is not available";
+    return;
+  }
+
+  auto supports = portal.GetSupportsBlocking();
+  if (!supports) {
+    Log() << "WARNING: Unknown portal supports";
+    return;
+  } else if (!(*supports & dbus::FlatpakPortalProxy::kSupports_ExposePids)) {
+    Log() << "Portal does not support expose-pids";
+    return;
+  }
+
+  Debug() << "Spawn strategy is enabled";
+  Env::Set(Env::kZypakZygoteStrategySpawn, "1");
+}
 
 bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
   FdMap fd_map;
@@ -77,11 +116,13 @@ int main(int argc, char** argv) {
 
   std::string_view mode = *it++;
 
-  if (mode == "child") {
+  if (mode == "host") {
+    DetermineZygoteStrategy();
+  } else if (mode == "child") {
     if (!ApplyFdMapFromArgs(&it, args.end())) {
       return 1;
     }
-  } else if (mode != "host") {
+  } else {
     Log() << "Invalid mode: " << mode;
     return 1;
   }
@@ -89,6 +130,10 @@ int main(int argc, char** argv) {
   if (it == args.end()) {
     Log() << "Expected a command";
     return 1;
+  }
+
+  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+    Log() << "TODO: implement spawn strategy";
   }
 
   auto bindir = Env::Require(Env::kZypakBin);

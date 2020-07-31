@@ -24,6 +24,7 @@ class Env {
 
   static constexpr std::string_view kZypakBin = "ZYPAK_BIN";
   static constexpr std::string_view kZypakLib = "ZYPAK_LIB";
+  static constexpr std::string_view kZypakZygoteStrategySpawn = "ZYPAK_ZYGOTE_STRATEGY_SPAWN";
 
   static constexpr std::string_view kZypakSettingEnableDebug = "ZYPAK_DEBUG";
   static constexpr std::string_view kZypakSettingStrace = "ZYPAK_STRACE";
