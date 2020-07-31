@@ -175,4 +175,15 @@ bool Socket::EnableReceivePid(int fd) {
   return true;
 }
 
+// static
+std::optional<std::pair<unique_fd, unique_fd>> Socket::OpenSocketPair() {
+  std::array<int, 2> fds;
+  if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds.data()) == -1) {
+    Errno() << "Failed to open socket pair";
+    return {};
+  }
+
+  return std::make_pair(unique_fd(fds[0]), unique_fd(fds[1]));
+}
+
 }  // namespace zypak

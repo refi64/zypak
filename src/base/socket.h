@@ -52,6 +52,9 @@ class Socket {
 
   // Enables the ability for the given FD to receive peer's PID on socket read operations.
   static bool EnableReceivePid(int fd);
+
+  // Opens a pair of two sockets, returning an empty optional on failure.
+  static std::optional<std::pair<unique_fd, unique_fd>> OpenSocketPair();
 };
 
 }  // namespace zypak
