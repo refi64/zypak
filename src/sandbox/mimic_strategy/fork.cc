@@ -61,7 +61,7 @@ bool TestChildPidFromHost() {
   std::array<std::byte, kZygoteMaxMessageLength> buffer;
   int child_pid_test = -1;
 
-  ssize_t len = Socket::Read(kZygoteHostFd, &buffer, nullptr);
+  ssize_t len = Socket::Read(kZygoteHostFd, &buffer);
   if (len > 0) {
     nickle::buffers::ReadOnlyContainerBuffer nbuf(buffer);
     nickle::Reader reader(&nbuf);
@@ -166,7 +166,7 @@ std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::str
     // XXX: ignoring UMA args for now
     writer.Write<nickle::codecs::StringView>("");
 
-    if (!Socket::Write(kZygoteHostFd, buffer, nullptr)) {
+    if (!Socket::Write(kZygoteHostFd, buffer)) {
       Errno() << "Failed to send exec reply to zygote host";
     }
 

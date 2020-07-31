@@ -16,24 +16,33 @@ namespace {
 
 class ControlBufferSpace {
  public:
-  constexpr ControlBufferSpace(int nfds) : fd_buffer_size(nfds * sizeof(int)) {}
+  static constexpr size_t kUcredSize = CMSG_SPACE(sizeof(struct ucred));
 
-  constexpr size_t ctl_buffer_size() const { return CMSG_SPACE(fd_buffer_size); }
-  static constexpr size_t ucred_size() { return CMSG_SPACE(sizeof(struct ucred)); }
-  constexpr size_t ctl_buffer_size_with_ucred() const { return ctl_buffer_size() + ucred_size(); }
-  constexpr size_t cmsg_len() const { return CMSG_LEN(fd_buffer_size); }
+  ControlBufferSpace(int nfds, bool with_ucred)
+      : fd_buffer_size_(nfds * sizeof(int)), with_ucred_(with_ucred) {}
+
+  size_t ctl_buffer_size() const {
+    return CMSG_SPACE(fd_buffer_size_) + (with_ucred_ ? kUcredSize : 0);
+  }
+
+  size_t rights_cmsg_len() const { return CMSG_LEN(fd_buffer_size_); }
+  size_t ucred_cmsg_len() const { return CMSG_LEN(sizeof(struct ucred)); }
+
+  bool with_ucred() const { return with_ucred_; }
 
  private:
-  size_t fd_buffer_size;
+  size_t fd_buffer_size_;
+  bool with_ucred_;
 };
+
+size_t GetCMsgSize(struct cmsghdr* cmsg) { return cmsg->cmsg_len - CMSG_LEN(0); }
 
 }  // namespace
 
 namespace zypak {
 
 // static
-ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
-                     std::vector<unique_fd>* fds /*= nullptr*/) {
+ssize_t Socket::Read(int fd, std::byte* buffer, size_t size, ReadOptions options /*= {}*/) {
   ZYPAK_ASSERT(buffer != nullptr);
 
   struct msghdr msg;
@@ -43,28 +52,50 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
   msg.msg_iov = &iov;
   msg.msg_iovlen = 1;
 
-  constexpr size_t kMaxFileDescriptors = 16;
-  constexpr ControlBufferSpace kCtlBufferSpace(kMaxFileDescriptors);
+  std::unique_ptr<std::byte[]> ctl_buffer;
+  if (options.fds != nullptr || options.pid != nullptr) {
+    constexpr size_t kMaxFileDescriptors = 16;
+    ControlBufferSpace space(options.fds != nullptr ? kMaxFileDescriptors : 0,
+                             /*with_ucred=*/options.pid != nullptr);
 
-  std::array<std::byte, kCtlBufferSpace.ctl_buffer_size()> ctl_buffer;
-  msg.msg_control = reinterpret_cast<std::byte*>(ctl_buffer.data());
-  msg.msg_controllen = ctl_buffer.size();
+    ctl_buffer = std::make_unique<std::byte[]>(space.ctl_buffer_size());
+    msg.msg_control = ctl_buffer.get();
+    msg.msg_controllen = space.ctl_buffer_size();
+
+    if (options.pid != nullptr) {
+      *options.pid = -1;
+    }
+  }
 
   ssize_t res = HANDLE_EINTR(recvmsg(fd, &msg, 0));
   if (res == -1) {
     return -1;
   }
 
-  if (msg.msg_controllen > 0 && fds != nullptr) {
+  if (msg.msg_controllen > 0 && ctl_buffer) {
     for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
          cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-      if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
-        size_t cmsg_size = cmsg->cmsg_len - CMSG_LEN(0);
-        size_t nfds = cmsg_size / sizeof(int);
-        fds->reserve(nfds);
-        int* cmsg_fds = reinterpret_cast<int*>(CMSG_DATA(cmsg));
-        for (int i = 0; i < nfds; i++) {
-          fds->emplace_back(cmsg_fds[i]);
+      if (cmsg->cmsg_level == SOL_SOCKET) {
+        if (cmsg->cmsg_type == SCM_RIGHTS) {
+          if (options.fds == nullptr) {
+            continue;
+          }
+
+          size_t nfds = GetCMsgSize(cmsg) / sizeof(int);
+          options.fds->reserve(nfds);
+          int* cmsg_fds = reinterpret_cast<int*>(CMSG_DATA(cmsg));
+          for (int i = 0; i < nfds; i++) {
+            options.fds->emplace_back(cmsg_fds[i]);
+          }
+        } else if (cmsg->cmsg_type == SCM_CREDENTIALS) {
+          if (options.pid == nullptr) {
+            continue;
+          }
+
+          ZYPAK_ASSERT(GetCMsgSize(cmsg) == sizeof(struct ucred));
+          struct ucred* cred = reinterpret_cast<struct ucred*>(CMSG_DATA(cmsg));
+          ZYPAK_ASSERT(cred->pid != 0);
+          *options.pid = cred->pid;
         }
       }
     }
@@ -75,18 +106,21 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size,
     return -1;
   }
 
+  if (options.pid != nullptr && *options.pid == -1) {
+    errno = ESRCH;
+    return -1;
+  }
+
   return res;
 }
 
 // static
-ssize_t Socket::Read(int fd, std::vector<std::byte>* buffer,
-                     std::vector<unique_fd>* fds /*= nullptr*/) {
-  return Read(fd, buffer->data(), buffer->size(), fds);
+ssize_t Socket::Read(int fd, std::vector<std::byte>* buffer, ReadOptions options /*= {}*/) {
+  return Read(fd, buffer->data(), buffer->size(), std::move(options));
 }
 
 // static
-bool Socket::Write(int fd, const std::byte* buffer, size_t size,
-                   const std::vector<int>* fds /*= nullptr*/) {
+bool Socket::Write(int fd, const std::byte* buffer, size_t size, WriteOptions options /*= {}*/) {
   ZYPAK_ASSERT(buffer != nullptr);
 
   struct msghdr msg;
@@ -98,36 +132,47 @@ bool Socket::Write(int fd, const std::byte* buffer, size_t size,
 
   std::unique_ptr<std::byte[]> ctl_buffer;
 
-  if (fds != nullptr) {
-    ControlBufferSpace space(fds->size());
+  if (options.fds != nullptr) {
+    ControlBufferSpace space(options.fds != nullptr ? options.fds->size() : 0,
+                             /*with_ucred=*/false);
 
     ctl_buffer = std::make_unique<std::byte[]>(space.ctl_buffer_size());
-    msg.msg_control = reinterpret_cast<std::byte*>(ctl_buffer.get());
+    msg.msg_control = ctl_buffer.get();
     msg.msg_controllen = space.ctl_buffer_size();
 
     struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
     cmsg->cmsg_level = SOL_SOCKET;
     cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = space.cmsg_len();
+    cmsg->cmsg_len = space.rights_cmsg_len();
 
-    auto it = reinterpret_cast<int*>(CMSG_DATA(cmsg));
-    std::copy(fds->begin(), fds->end(), it);
+    int* it = reinterpret_cast<int*>(CMSG_DATA(cmsg));
+    std::copy(options.fds->begin(), options.fds->end(), it);
   }
 
   return HANDLE_EINTR(sendmsg(fd, &msg, MSG_NOSIGNAL)) == size;
 }
 
 // static
-bool Socket::Write(int fd, const std::vector<std::byte>& buffer,
-                   const std::vector<int>* fds /*= nullptr*/) {
-  return Write(fd, buffer.data(), buffer.size(), fds);
+bool Socket::Write(int fd, const std::vector<std::byte>& buffer, WriteOptions options /*= {}*/) {
+  return Write(fd, buffer.data(), buffer.size(), std::move(options));
 }
 
 // static
-bool Socket::Write(int fd, std::string_view buffer, const std::vector<int>* fds /*= nullptr*/) {
+bool Socket::Write(int fd, std::string_view buffer, WriteOptions options /*= {}*/) {
   return Write(fd, reinterpret_cast<const std::byte*>(buffer.data()),
                buffer.size() + 1,  // include the null terminator
-               fds);
+               std::move(options));
+}
+
+// static
+bool Socket::EnableReceivePid(int fd) {
+  int value = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &value, sizeof(value)) == -1) {
+    Errno() << "Failed to enable SO_PASSCRED";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace zypak

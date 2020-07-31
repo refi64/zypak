@@ -17,22 +17,41 @@ namespace zypak {
 // 'fds' is always a vector of file descriptors being passed over a socket.
 class Socket {
  public:
-  static ssize_t Read(int fd, std::vector<std::byte>* buffer,
-                      std::vector<unique_fd>* fds = nullptr);
-  static ssize_t Read(int fd, std::byte* buffer, size_t size,
-                      std::vector<unique_fd>* fds = nullptr);
+  struct ReadOptions {
+    ReadOptions() {}
+
+    // If not null, any FDs received from the peer will be stored here.
+    std::vector<unique_fd>* fds = nullptr;
+    // If not null, the peer's PID will be stored here.
+    pid_t* pid = nullptr;
+  };
+
+  static ssize_t Read(int fd, std::vector<std::byte>* buffer, ReadOptions options = {});
+  static ssize_t Read(int fd, std::byte* buffer, size_t size, ReadOptions options = {});
 
   template <size_t N>
-  static ssize_t Read(int fd, std::array<std::byte, N>* buffer,
-                      std::vector<unique_fd>* fds = nullptr) {
-    return Read(fd, buffer->data(), N, fds);
+  static ssize_t Read(int fd, std::array<std::byte, N>* buffer, ReadOptions options = {}) {
+    return Read(fd, buffer->data(), N, std::move(options));
   }
 
-  static bool Write(int fd, const std::byte* buffer, size_t length,
-                    const std::vector<int>* fds = nullptr);
-  static bool Write(int fd, const std::vector<std::byte>& buffer,
-                    const std::vector<int>* fds = nullptr);
-  static bool Write(int fd, std::string_view buffer, const std::vector<int>* fds = nullptr);
+  struct WriteOptions {
+    WriteOptions() {}
+
+    // A list of FDs to pass over the socket.
+    const std::vector<int>* fds = nullptr;
+  };
+
+  static bool Write(int fd, const std::byte* buffer, size_t length, WriteOptions options = {});
+  static bool Write(int fd, const std::vector<std::byte>& buffer, WriteOptions options = {});
+  static bool Write(int fd, std::string_view buffer, WriteOptions options = {});
+
+  template <size_t N>
+  static bool Write(int fd, const std::array<std::byte, N>& buffer, WriteOptions options = {}) {
+    return Write(fd, buffer.data(), N, std::move(options));
+  }
+
+  // Enables the ability for the given FD to receive peer's PID on socket read operations.
+  static bool EnableReceivePid(int fd);
 };
 
 }  // namespace zypak

@@ -35,7 +35,9 @@ void MimicZygoteRunner::HandleMessage(EvLoop::SourceRef source) {
   static std::array<std::byte, kZygoteMaxMessageLength> buffer;
   std::vector<unique_fd> fds;
 
-  ssize_t len = Socket::Read(kZygoteHostFd, &buffer, &fds);
+  Socket::ReadOptions options;
+  options.fds = &fds;
+  ssize_t len = Socket::Read(kZygoteHostFd, &buffer, options);
   if (len <= 0) {
     if (len == 0) {
       Log() << "No data could be read (host died?)";

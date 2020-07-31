@@ -91,7 +91,7 @@ void HandleTerminationStatusRequest(std::set<pid_t>* children, nickle::Reader* r
   ZYPAK_ASSERT(writer.Write<ZygoteTerminationStatusCodec>(child_status));
   ZYPAK_ASSERT(writer.Write<nickle::codecs::Int32>(wstatus));
 
-  if (!Socket::Write(kZygoteHostFd, buffer, nullptr)) {
+  if (!Socket::Write(kZygoteHostFd, buffer)) {
     Errno() << "Failed to send termination status reply to zygote host";
   }
 }
@@ -105,7 +105,7 @@ void HandleSandboxStatusRequest() {
 
   // XXX
   int flags = kFlagSUID | kFlagPidNS | kFlagNetNS | kBPF | kBPFTsync;
-  if (!Socket::Write(kZygoteHostFd, reinterpret_cast<std::byte*>(&flags), sizeof(flags), nullptr)) {
+  if (!Socket::Write(kZygoteHostFd, reinterpret_cast<std::byte*>(&flags), sizeof(flags))) {
     Errno() << "Failed to write sandbox status";
   }
 }
