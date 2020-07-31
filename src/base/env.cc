@@ -38,7 +38,7 @@ void Env::Set(std::string_view name, std::string_view value, bool overwrite /*= 
 // static
 bool Env::Test(std::string_view name) {
   if (auto env = Get(name)) {
-    return !env->empty();
+    return !env->empty() && *env != "0" && *env != "false";
   } else {
     return false;
   }
