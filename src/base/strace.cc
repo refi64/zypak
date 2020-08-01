@@ -30,4 +30,7 @@ std::optional<std::string_view> Strace::GetSyscallFilter() {
   return Env::Get(Env::kZypakSettingStraceFilter);
 }
 
+// static
+bool Strace::HasLineLimit() { return !Env::Test(Env::kZypakSettingStraceNoLineLimit); }
+
 }  // namespace zypak

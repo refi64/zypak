@@ -33,6 +33,10 @@ std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_m
       wrapper.push_back("-e");
       wrapper.push_back(filter->data());
     }
+
+    if (!Strace::HasLineLimit()) {
+      wrapper.push_back("-v");
+    }
   }
 
   wrapper.push_back(helper_path_);

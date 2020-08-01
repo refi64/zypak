@@ -54,6 +54,7 @@ modules somewhere in your Flatpak manifest:
 - Set `ZYPAK_STRACE=all` to run strace on the host and child processes.
   - To make it host-only or child-only, set `ZYPAK_STRACE=host` or `ZYPAK_STRACE=child`, respectively.
   - Set `ZYPAK_STRACE_FILTER=expr` to pass a filter expression to `strace -e`.
+  - In order to avoid arguments being ellipsized, set `ZYPAK_STRACE_NO_LINE_LIMIT=1`.
 - Set `ZYPAK_DISABLE_SANDBOX=1` to disable the use of the `--sandbox` argument
   (required if the Electron binary is not installed, as the sandboxed calls will be unable to locate the Electron binary).
 

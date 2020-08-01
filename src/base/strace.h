@@ -22,6 +22,7 @@ class Strace {
   // Returns a filter to pass to 'strace -e' if given by the user; if none is given, returns an
   // empty optional.
   static std::optional<std::string_view> GetSyscallFilter();
+  static bool HasLineLimit();
 };
 
 }  // namespace zypak

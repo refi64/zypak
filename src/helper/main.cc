@@ -163,6 +163,10 @@ int main(int argc, char** argv) {
       new_command.push_back(*filter);
     }
 
+    if (!Strace::HasLineLimit()) {
+      new_command.push_back("-v");
+    }
+
     ExtendContainerCopy(&new_command, command);
     command = std::move(new_command);
   } else {

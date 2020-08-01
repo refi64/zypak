@@ -29,6 +29,7 @@ class Env {
   static constexpr std::string_view kZypakSettingEnableDebug = "ZYPAK_DEBUG";
   static constexpr std::string_view kZypakSettingStrace = "ZYPAK_STRACE";
   static constexpr std::string_view kZypakSettingStraceFilter = "ZYPAK_STRACE_FILTER";
+  static constexpr std::string_view kZypakSettingStraceNoLineLimit = "ZYPAK_STRACE_NO_LINE_LIMIT";
   static constexpr std::string_view kZypakSettingAllowNetwork = "ZYPAK_ALLOW_NETWORK";
   static constexpr std::string_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
   static constexpr std::string_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
