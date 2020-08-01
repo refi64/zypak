@@ -20,9 +20,14 @@ class unique_fd {
   unique_fd(int fd) : fd_(fd) {}
 
   unique_fd(const unique_fd& other) = delete;
-  unique_fd(unique_fd&& other) : unique_fd() { std::swap(fd_, other.fd_); }
+  unique_fd(unique_fd&& other) { *this = std::move(other); }
 
   ~unique_fd() { reset(); }
+
+  unique_fd& operator=(unique_fd&& other) {
+    fd_ = other.release();
+    return *this;
+  }
 
   bool invalid() const { return fd_ == kInvalidFd; }
   int get() const { return fd_; }
