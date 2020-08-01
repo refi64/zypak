@@ -14,17 +14,25 @@
 
 namespace zypak::debug_internal {
 
+// static
+std::mutex LogStream::lock_;
+
 LogStream::LogStream(std::ostream* os, int errno_save /*= -1*/)
-    : std::ostream(os->rdbuf()), os_(os), errno_save_(errno_save) {
-  *os_ << "[" << getpid() << ' ' << DebugContext::instance()->name() << "] ";
+    : LogStream(std::make_unique<std::stringstream>(), os, errno_save) {}
+
+LogStream::LogStream(std::unique_ptr<std::stringstream> ss, std::ostream* os, int errno_save)
+    : std::ostream(ss->rdbuf()), errno_save_(errno_save), ss_(std::move(ss)), os_(os),
+      lock_guard_(lock_) {
+  *ss_ << "[" << getpid() << ' ' << DebugContext::instance()->name() << "] ";
 }
 
 LogStream::~LogStream() {
-  if (errno_save_ != 0) {
-    *os_ << ": " << std::strerror(errno_save_) << " (errno " << errno_save_ << ")";
+  if (errno_save_ != -1) {
+    *ss_ << ": " << std::strerror(errno_save_) << " (errno " << errno_save_ << ")";
   }
 
-  *os_ << std::endl;
+  *ss_ << std::endl;
+  *os_ << ss_->str();
 }
 
 }  // namespace zypak::debug_internal
