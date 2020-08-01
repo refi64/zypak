@@ -5,11 +5,10 @@
 
 #include "sandbox/mimic_strategy/fork.h"
 
-#include <signal.h>
+#include <bits/c++config.h>
+#include <sys/signal.h>
 #include <sys/wait.h>
 
-#include <algorithm>
-#include <array>
 #include <filesystem>
 #include <vector>
 
@@ -17,45 +16,17 @@
 
 #include "base/base.h"
 #include "base/debug.h"
-#include "base/env.h"
 #include "base/fd_map.h"
 #include "base/socket.h"
-#include "base/str_util.h"
-#include "base/strace.h"
 #include "base/unique_fd.h"
+#include "sandbox/launcher.h"
 #include "sandbox/mimic_strategy/command.h"
+#include "sandbox/mimic_strategy/mimic_launcher_delegate.h"
 #include "sandbox/mimic_strategy/zygote.h"
 
 namespace fs = std::filesystem;
 
 namespace zypak::sandbox::mimic_strategy {
-
-void ExecZygoteChild(unique_fd pid_oracle, std::vector<std::string> command) {
-  close(kZygoteHostFd);
-
-  if (chdir("/") == -1) {
-    Errno() << "Failed to chdir to /";
-  }
-
-  constexpr std::string_view kChildPing = "CHILD_PING";
-  if (!Socket::Write(pid_oracle.get(), kChildPing)) {
-    Errno() << "Failed to send child ping message";
-    ZYPAK_ASSERT(false);
-  }
-
-  std::vector<const char*> c_argv;
-
-  for (const auto& arg : command) {
-    c_argv.push_back(arg.c_str());
-  }
-  c_argv.push_back(nullptr);
-
-  Debug() << "run as " << getpid() << ": " << Join(command.begin(), command.end());
-
-  execvp(c_argv[0], const_cast<char* const*>(c_argv.data()));
-  Errno() << "Failed to exec child process " << Join(command.begin(), command.end());
-  ZYPAK_ASSERT(false);
-}
 
 bool TestChildPidFromHost() {
   std::array<std::byte, kZygoteMaxMessageLength> buffer;
@@ -75,102 +46,27 @@ bool TestChildPidFromHost() {
   return child_pid_test != -1;
 }
 
-std::optional<pid_t> SpawnZygoteChild(unique_fd pid_oracle, std::vector<std::string> args,
-                                      FdMap fd_map) {
-  namespace fs = std::filesystem;
-
-  auto bindir = Env::Require(Env::kZypakBin);
-  auto libdir = Env::Require(Env::kZypakLib);
-
-  // Since /proc/self/exe now refers to zypak-sandbox rather than Chrome,
-  // rewrite it.
-  if (args[0] == "/proc/self/exe") {
-    auto caller_path = fs::read_symlink(fs::path("/proc") / std::to_string(getppid()) / "exe");
-    args[0] = caller_path.string();
-  }
-
-  std::vector<std::string> spawn_args;
-  spawn_args.push_back("flatpak-spawn");
-  spawn_args.push_back("--watch-bus");
-
-  if (!Env::Test(Env::kZypakSettingAllowNetwork)) {
-    spawn_args.push_back("--no-network");
-  }
-
-  if (!Env::Test(Env::kZypakSettingDisableSandbox)) {
-    if (std::find(args.begin(), args.end(), "--type=gpu-process") == args.end() ||
-        Env::Test(Env::kZypakSettingAllowGpu)) {
-      spawn_args.push_back("--sandbox");
-    }
-  }
-
-  spawn_args.push_back("--env="s + Env::kZypakBin.data() + "=" + bindir.data());
-  spawn_args.push_back("--env="s + Env::kZypakLib.data() + "=" + libdir.data());
-
-  if (DebugContext::instance()->enabled()) {
-    spawn_args.push_back("--env="s + Env::kZypakSettingEnableDebug.data() + "=1");
-  }
-
-  for (const auto& assignment : fd_map) {
-    spawn_args.push_back("--forward-fd="s + std::to_string(assignment.fd().get()));
-  }
-
-  if (Strace::ShouldTraceTarget(Strace::Target::kChild)) {
-    spawn_args.push_back("strace");
-    spawn_args.push_back("-f");
-
-    if (auto filter = Strace::GetSyscallFilter()) {
-      spawn_args.push_back("-e");
-      spawn_args.push_back(filter->data());
-    }
-  }
-
-  auto helper_path = fs::path(bindir.data()) / "zypak-helper";
-  spawn_args.push_back(helper_path.string());
-  spawn_args.push_back("child");
-
-  for (const auto& assignment : fd_map) {
-    spawn_args.push_back(assignment.Serialize());
-  }
-
-  spawn_args.push_back("-");
-
-  spawn_args.reserve(spawn_args.size() + args.size());
-  std::copy(args.begin(), args.end(), std::back_inserter(spawn_args));
-
-  pid_t child = fork();
-  if (child == -1) {
-    Errno() << "fork";
-    return {};
-  }
-
-  if (child == 0) {
-    ExecZygoteChild(std::move(pid_oracle), std::move(spawn_args));
-    ZYPAK_ASSERT(false);
-  } else {
-    if (!TestChildPidFromHost()) {
-      if (kill(child, SIGKILL) == -1) {
-        Errno() << "Unexpected error reaping dead child";
-      } else if (HANDLE_EINTR(waitpid(child, nullptr, 0)) == -1) {
-        Errno() << "Unexpected error waiting for dead child";
-      }
-
-      child = -1;
+void SendChildInfoToHost(pid_t child) {
+  if (!TestChildPidFromHost()) {
+    if (kill(child, SIGKILL) == -1) {
+      Errno() << "Unexpected error reaping dead child";
+    } else if (HANDLE_EINTR(waitpid(child, nullptr, 0)) == -1) {
+      Errno() << "Unexpected error waiting for dead child";
     }
 
-    std::vector<std::byte> buffer;
-    nickle::buffers::ContainerBuffer nbuf(&buffer);
-    nickle::Writer writer(&nbuf);
+    child = -1;
+  }
 
-    writer.Write<nickle::codecs::Int>(child);
-    // XXX: ignoring UMA args for now
-    writer.Write<nickle::codecs::StringView>("");
+  std::vector<std::byte> buffer;
+  nickle::buffers::ContainerBuffer nbuf(&buffer);
+  nickle::Writer writer(&nbuf);
 
-    if (!Socket::Write(kZygoteHostFd, buffer)) {
-      Errno() << "Failed to send exec reply to zygote host";
-    }
+  writer.Write<nickle::codecs::Int>(child);
+  // XXX: ignoring UMA args for now
+  writer.Write<nickle::codecs::StringView>("");
 
-    return {child};
+  if (!Socket::Write(kZygoteHostFd, buffer)) {
+    Errno() << "Failed to send exec reply to zygote host";
   }
 }
 
@@ -197,6 +93,13 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
     }
 
     args.push_back(arg);
+  }
+
+  // Since /proc/self/exe now refers to zypak-sandbox rather than Chrome,
+  // rewrite it.
+  if (args[0] == "/proc/self/exe") {
+    auto caller_path = fs::read_symlink(fs::path("/proc") / std::to_string(getppid()) / "exe");
+    args[0] = caller_path.string();
   }
 
   std::basic_string<std::uint16_t> timezone;
@@ -237,7 +140,16 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
   // Sandbox service FD.
   fd_map.emplace_back(unique_fd(4), 4);
 
-  return SpawnZygoteChild(std::move(pid_oracle), std::move(args), std::move(fd_map));
+  pid_t child;
+  MimicLauncherDelegate launcher_delegate(std::move(pid_oracle), &child);
+  Launcher launcher(&launcher_delegate);
+
+  if (!launcher.Run(std::move(args), fd_map)) {
+    return {};
+  }
+
+  SendChildInfoToHost(child);
+  return child;
 }
 
 }  // namespace zypak::sandbox::mimic_strategy

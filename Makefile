@@ -68,8 +68,10 @@ $(call build_shlib,preload_child)
 sandbox_NAME := zypak-sandbox
 sandbox_DEPS := base
 sandbox_SOURCES := \
+	launcher.cc \
 	main.cc \
 	mimic_strategy/fork.cc \
+	mimic_strategy/mimic_launcher_delegate.cc \
 	mimic_strategy/reap.cc \
 	mimic_strategy/status.cc \
 	mimic_strategy/zygote.cc \
