@@ -144,7 +144,6 @@ int main(int argc, char** argv) {
 
   auto preload = (fs::path(libdir) / ("libzypak-preload-"s + std::string(mode) + ".so")).string();
 
-  Env::Set("SBX_USER_NS", "1");
   Env::Set("SBX_PID_NS", "1");
   Env::Set("SBX_NET_NS", "1");
 
