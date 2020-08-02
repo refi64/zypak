@@ -42,6 +42,10 @@ void DetermineZygoteStrategy() {
   constexpr std::uint32_t kMinPortalSupportingSpawnStarted = 4;
 
   auto version = portal.GetVersionBlocking();
+  auto supports = portal.GetSupportsBlocking();
+
+  bus->Shutdown();
+
   if (!version) {
     Log() << "WARNING: Unknown portal version";
     return;
@@ -50,7 +54,6 @@ void DetermineZygoteStrategy() {
     return;
   }
 
-  auto supports = portal.GetSupportsBlocking();
   if (!supports) {
     Log() << "WARNING: Unknown portal supports";
     return;
