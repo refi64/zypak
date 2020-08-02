@@ -131,14 +131,18 @@ int main(int argc, char** argv) {
   auto it = args.begin();
 
   if (it == args.end()) {
-    Log() << "usage: zypak-helper [host|child] ....";
+    Log() << "usage: zypak-helper [spawn-strategy-test|host|child] ....";
     return 1;
   }
 
   std::string_view mode = *it++;
 
-  if (mode == "host") {
+  if (mode == "host" || mode == "spawn-strategy-test") {
     DetermineZygoteStrategy();
+
+    if (mode == "spawn-strategy-test") {
+      return !Env::Test(Env::kZypakZygoteStrategySpawn);
+    }
   } else if (mode == "child") {
     if (!ApplyFdMapFromArgs(&it, args.end())) {
       return 1;
