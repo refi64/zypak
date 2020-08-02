@@ -19,6 +19,7 @@
 #include "base/strace.h"
 #include "dbus/bus.h"
 #include "dbus/flatpak_portal_proxy.h"
+#include "helper/chroot_helper.h"
 
 using namespace zypak;
 
@@ -105,6 +106,23 @@ bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
   return true;
 }
 
+std::string GetPreload(std::string_view mode, std::string_view libdir) {
+  std::vector<std::string> preload_names;
+  std::vector<std::string> preload_libs;
+
+  preload_names.push_back(mode.data());
+  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+    preload_names.push_back(std::string(mode) + "-spawn-strategy");
+  }
+
+  for (std::string_view name : preload_names) {
+    fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name.data() + ".so");
+    preload_libs.push_back(path.string());
+  }
+
+  return Join(preload_libs.begin(), preload_libs.end(), ":");
+}
+
 int main(int argc, char** argv) {
   DebugContext::instance()->set_name("zypak-helper");
   DebugContext::instance()->LoadFromEnvironment();
@@ -135,17 +153,14 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
-    Log() << "TODO: implement spawn strategy";
-  }
-
   auto bindir = Env::Require(Env::kZypakBin);
   auto libdir = Env::Require(Env::kZypakLib);
 
   auto path = std::string(bindir) + ":" + std::string(Env::Require("PATH"));
   Env::Set("PATH", path);
 
-  auto preload = (fs::path(libdir) / ("libzypak-preload-"s + std::string(mode) + ".so")).string();
+  std::string preload = GetPreload(mode, libdir);
+  Debug() << "Preload is: " << preload;
 
   Env::Set("SBX_PID_NS", "1");
   Env::Set("SBX_NET_NS", "1");
@@ -186,6 +201,20 @@ int main(int argc, char** argv) {
   c_argv.push_back(nullptr);
 
   Debug() << Join(command.begin(), command.end());
+
+  if (Env::Test(Env::kZypakZygoteStrategySpawn) && mode == "child") {
+    auto helper = ChrootHelper::Spawn();
+    if (!helper) {
+      Log() << "Helper start failed, cannot continue";
+      return 1;
+    }
+
+    std::string fd_s = std::to_string(helper->fd.release());
+    std::string helper_s = std::to_string(helper->pid);
+
+    Env::Set(kSandboxHelperFdVar, fd_s);
+    Env::Set(kSandboxHelperPidVar, helper_s);
+  }
 
   execvp(c_argv[0], const_cast<char* const*>(c_argv.data()));
   Errno() << "exec failed for " << Join(command.begin(), command.end());

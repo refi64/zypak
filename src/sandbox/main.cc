@@ -12,6 +12,7 @@
 #include "base/env.h"
 #include "base/str_util.h"
 #include "sandbox/mimic_strategy/zygote.h"
+#include "sandbox/spawn_strategy/run.h"
 
 using namespace zypak;
 using namespace zypak::sandbox;
@@ -34,20 +35,26 @@ int main(int argc, char** argv) {
     Debug() << "XXX ignoring --adjust-oom-score " << args[1] << ' ' << args[2];
     return 0;
   } else {
-    if (std::find(args.begin(), args.end(), "--type=zygote") == args.end()) {
-      auto cmdline = Join(args.begin() + 1, args.end());
-      Log() << "Ignoring non-Zygote command: " << cmdline;
-      return 1;
-    }
+    if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+      if (!spawn_strategy::RunSpawnStrategy(std::move(args))) {
+        return 1;
+      }
+    } else {
+      if (std::find(args.begin(), args.end(), "--type=zygote") == args.end()) {
+        auto cmdline = Join(args.begin() + 1, args.end());
+        Log() << "Ignoring non-Zygote command: " << cmdline;
+        return 1;
+      }
 
-    auto runner = mimic_strategy::MimicZygoteRunner::Create();
-    if (!runner) {
-      Log() << "Failed to create zygote runner";
-      return 1;
-    }
+      auto runner = mimic_strategy::MimicZygoteRunner::Create();
+      if (!runner) {
+        Log() << "Failed to create zygote runner";
+        return 1;
+      }
 
-    if (!runner->Run()) {
-      return 1;
+      if (!runner->Run()) {
+        return 1;
+      }
     }
   }
 

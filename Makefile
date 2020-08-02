@@ -20,7 +20,13 @@ include rules.mk
 
 all :
 
+# Anything that the preload libs depend on needs to be build with -fPIC, since the preload libs
+# are so files can can only have objects built with -fPIC.
+pic_NAME := pic
+pic_PUBLIC_CXXFLAGS := -fPIC
+
 base_NAME := base
+base_DEPS := pic
 base_PUBLIC_LIBS := $(LIBSYSTEMD_LDLIBS)
 base_SOURCES := \
 	debug_internal/log_stream.cc \
@@ -34,6 +40,7 @@ base_SOURCES := \
 $(call build_stlib,base)
 
 dbus_NAME := dbus
+dbus_DEPS := pic
 dbus_PUBLIC_LIBS := $(DBUS_LDLIBS)
 dbus_SOURCES := \
 	bus.cc \
@@ -57,6 +64,18 @@ preload_host_SOURCES := \
 
 $(call build_shlib,preload_host)
 
+preload_host_spawn_strategy_SOURCE_DIR := preload/host/spawn_strategy
+preload_host_spawn_strategy_NAME := zypak-preload-host-spawn-strategy
+preload_host_spawn_strategy_DEPS := preload dbus base
+preload_host_spawn_strategy_SOURCES := \
+	bus_safe_fork.cc \
+	initialize.cc \
+	no_close_host_fd.cc \
+	process_override.cc \
+	supervisor.cc \
+
+$(call build_shlib,preload_host_spawn_strategy)
+
 preload_child_SOURCE_DIR := preload/child
 preload_child_NAME := zypak-preload-child
 preload_child_DEPS := preload base
@@ -64,6 +83,14 @@ preload_child_SOURCES := \
 	bwrap_pid.cc \
 
 $(call build_shlib,preload_child)
+
+preload_child_spawn_strategy_SOURCE_DIR := preload/child/spawn_strategy
+preload_child_spawn_strategy_NAME := zypak-preload-child-spawn-strategy
+preload_child_spawn_strategy_DEPS := preload dbus base
+preload_child_spawn_strategy_SOURCES := \
+	chroot_fake.cc \
+
+$(call build_shlib,preload_child_spawn_strategy)
 
 sandbox_NAME := zypak-sandbox
 sandbox_DEPS := base
@@ -75,12 +102,15 @@ sandbox_SOURCES := \
 	mimic_strategy/reap.cc \
 	mimic_strategy/status.cc \
 	mimic_strategy/zygote.cc \
+	spawn_strategy/run.cc \
+	spawn_strategy/spawn_launcher_delegate.cc \
 
 $(call build_exe,sandbox)
 
 helper_NAME := zypak-helper
 helper_DEPS := dbus base
 helper_SOURCES := \
+	chroot_helper.cc \
 	main.cc \
 
 $(call build_exe,helper)
