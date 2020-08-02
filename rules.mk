@@ -4,6 +4,7 @@ $(1)_SOURCE_DIR ?= $(1)
 $(1)_SOURCE_DIR_FULL := src/$$($(1)_SOURCE_DIR)
 $(1)_SOURCE_PATHS := $$(patsubst %,$$($(1)_SOURCE_DIR_FULL)/%,$$($(1)_SOURCES))
 $(1)_OBJECTS := $$(patsubst %.cc,$(OBJ)/$(1)/%.o,$$($(1)_SOURCES))
+$(1)_CXXFLAGS += $$(foreach dep,$$($(1)_DEPS),$$($$(dep)_PUBLIC_CXXFLAGS))
 
 _$(1)_builddir:
 	@mkdir -p $$(dir $$($(1)_OBJECTS))
