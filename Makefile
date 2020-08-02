@@ -112,6 +112,7 @@ helper_DEPS := dbus base
 helper_SOURCES := \
 	chroot_helper.cc \
 	main.cc \
+	spawn_latest.cc \
 
 $(call build_exe,helper)
 
@@ -126,4 +127,6 @@ install : all
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-helper
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-sandbox
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host.so
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-spawn-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child.so
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child-spawn-strategy.so
