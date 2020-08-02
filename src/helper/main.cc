@@ -20,6 +20,7 @@
 #include "dbus/bus.h"
 #include "dbus/flatpak_portal_proxy.h"
 #include "helper/chroot_helper.h"
+#include "helper/spawn_latest.h"
 
 using namespace zypak;
 
@@ -131,13 +132,19 @@ int main(int argc, char** argv) {
   auto it = args.begin();
 
   if (it == args.end()) {
-    Log() << "usage: zypak-helper [spawn-strategy-test|host|child] ....";
+    Log() << "usage: zypak-helper [spawn-strategy-test|host-latest|host|child] ....";
     return 1;
   }
 
   std::string_view mode = *it++;
 
-  if (mode == "host" || mode == "spawn-strategy-test") {
+  if (mode == "host-latest") {
+    if (!SpawnLatest(ArgsView(it, args.end()))) {
+      return 1;
+    }
+
+    return 0;
+  } else if (mode == "host" || mode == "spawn-strategy-test") {
     DetermineZygoteStrategy();
 
     if (mode == "spawn-strategy-test") {
