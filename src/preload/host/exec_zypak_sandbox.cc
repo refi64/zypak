@@ -41,13 +41,8 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
     // Check if the file is identical to the current exe, from a re-exec.
     struct stat self_st, exec_st;
 
-    if (stat("/proc/self/exe", &self_st) == -1 || stat(file, &exec_st) == -1) {
-      // Pretend the exec just failed.
-      errno = -ENOENT;
-      return -1;
-    }
-
-    if (self_st.st_ino == exec_st.st_ino) {
+    if (stat("/proc/self/exe", &self_st) != -1 && stat(file, &exec_st) != -1 &&
+        self_st.st_ino == exec_st.st_ino) {
       // exec on the host exe, so pass it through the sandbox.
       // "Leaking" calls to 'new' doesn't matter here since we're about to exec anyway.
       std::vector<const char*> c_argv;
