@@ -5,7 +5,7 @@ ColumnLimit: 100
 FixNamespaceComments: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<systemd/'
+  - Regex: '^<(systemd|gtk)/'
     Priority: 3
   - Regex: '^<nickle'
     Priority: 3

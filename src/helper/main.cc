@@ -115,6 +115,10 @@ std::string GetPreload(std::string_view mode, std::string_view libdir) {
   if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
     preload_names.push_back(std::string(mode) + "-spawn-strategy");
   }
+  if (Env::Test(Env::kZypakSettingForceFilePortal)) {
+    ZYPAK_ASSERT(mode == "host");
+    preload_names.push_back("host-file-portal");
+  }
 
   for (std::string_view name : preload_names) {
     fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name.data() + ".so");
