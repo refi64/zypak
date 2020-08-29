@@ -173,9 +173,6 @@ int main(int argc, char** argv) {
   std::string preload = GetPreload(mode, libdir);
   Debug() << "Preload is: " << preload;
 
-  Env::Set("SBX_PID_NS", "1");
-  Env::Set("SBX_NET_NS", "1");
-
   ArgsView command(it, args.end());
 
   if (mode == "host" && Strace::ShouldTraceTarget(Strace::Target::kHost)) {
