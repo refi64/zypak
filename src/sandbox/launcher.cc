@@ -19,7 +19,7 @@ namespace zypak::sandbox {
 constexpr std::string_view kSandboxApiVar = "SBX_CHROME_API_PRV";
 constexpr std::string_view kSandboxApiValue = "1";
 constexpr std::string_view kSandboxPidNsVar = "SBX_PID_NS";
-constexpr std::string_view kSandboxNetNsVar = "SBX_PID_NS";
+constexpr std::string_view kSandboxNetNsVar = "SBX_NET_NS";
 constexpr std::string_view kSandboxNsEnabled = "1";
 
 std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_map) const {
