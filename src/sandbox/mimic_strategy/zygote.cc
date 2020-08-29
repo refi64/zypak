@@ -116,7 +116,7 @@ bool MimicZygoteRunner::Run() {
       return false;
     }
 
-    Log() << "Going to run main loop";
+    Debug() << "Going to run main loop";
     zygote_host_ref->AddDestroyHandler([this]() {
       Log() << "Host is gone, preparing to exit...";
       ev_.Exit(EvLoop::ExitStatus::kSuccess);
