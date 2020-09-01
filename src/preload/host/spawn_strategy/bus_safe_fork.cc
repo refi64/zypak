@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <filesystem>
+#include <mutex>
 
 #include "base/base.h"
 #include "base/debug.h"
@@ -17,8 +18,19 @@
 
 using namespace zypak;
 
+namespace {
+
+// If multiple threads call fork at the same time, it can result in a race when pausing and resuming
+// the bus instance, resulting in various std::thread options terminating because they were
+// performed on a joinable thread instance.
+std::mutex bus_shutdown_lock_;
+
+}  // namespace
+
 DECLARE_OVERRIDE(pid_t, fork) {
   auto original = LoadOriginal();
+
+  std::unique_lock<std::mutex> guard(bus_shutdown_lock_);
 
   dbus::Bus* bus = dbus::Bus::Acquire();
 
