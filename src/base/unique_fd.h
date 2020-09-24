@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+#include "base/debug.h"
+
 namespace zypak {
 
 // An owned file descriptor, closed on object destruction.
@@ -40,7 +42,9 @@ class unique_fd {
 
   void reset() {
     if (!invalid()) {
-      close(release());
+      if (int fd = release(); close(fd) == -1) {
+        Errno() << "Failed to close fd " << fd;
+      }
     }
   }
 

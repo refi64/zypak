@@ -56,7 +56,9 @@ bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
 }
 
 void MimicLauncherDelegate::ExecZygoteChild(std::vector<std::string> command) {
-  close(kZygoteHostFd);
+  if (close(kZygoteHostFd) == -1) {
+    Errno() << "Failed to close Zygote host FD";
+  }
 
   if (chdir("/") == -1) {
     Errno() << "Failed to chdir to /";
