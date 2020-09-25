@@ -117,6 +117,9 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
   } else if (desired_fd_count != fds.size()) {
     Log() << "Given " << fds.size() << " fds, but pickle wants " << desired_fd_count;
     return {};
+  } else if (desired_fd_count < 1) {
+    Log() << "Too few FDs " << fds.size();
+    return {};
   }
 
   unique_fd pid_oracle(std::move(fds[0]));
