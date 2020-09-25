@@ -140,9 +140,6 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
     fd_map.emplace_back(std::move(fds[i]), desired_fd);
   }
 
-  // Sandbox service FD.
-  fd_map.emplace_back(unique_fd(4), 4);
-
   pid_t child;
   MimicLauncherDelegate launcher_delegate(std::move(pid_oracle), &child);
   Launcher launcher(&launcher_delegate);
