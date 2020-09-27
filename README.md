@@ -7,7 +7,7 @@ by using LD_PRELOAD magic and a redirected sandbox.
 
 This requires your Flatpak to be using:
 
-- `org.freedesktop.Platform` / `Sdk` version `19.08`.
+- `org.freedesktop.Platform` / `Sdk` version `19.08` or later.
 - `org.electronjs.Electron2.BaseApp` as your base app. Recent releases include Zypak
   built-in.
 
