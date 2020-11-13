@@ -84,13 +84,16 @@ bool SpawnLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
 
   // Includes null terminator.
   std::array<std::byte, kZypakSupervisorExitReply.size() + 1> reply;
-  if (ssize_t bytes_read = Socket::Read(request_pipe->get(), &reply); bytes_read == -1) {
+  ssize_t bytes_read = Socket::Read(request_pipe->get(), &reply);
+  if (bytes_read == -1) {
     Errno() << "Failed to wait for supervisor exit reply";
     return false;
   }
 
   Debug() << "Got supervisor exit message";
-  ZYPAK_ASSERT(kZypakSupervisorExitReply == reinterpret_cast<char*>(reply.data()));
+
+  bool force_closed = bytes_read == 0;
+  ZYPAK_ASSERT(force_closed || kZypakSupervisorExitReply == reinterpret_cast<char*>(reply.data()));
 
   return true;
 }
