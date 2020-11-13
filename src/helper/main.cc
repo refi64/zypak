@@ -136,14 +136,15 @@ int main(int argc, char** argv) {
   auto it = args.begin();
 
   if (it == args.end()) {
-    Log() << "usage: zypak-helper [spawn-strategy-test|host-latest|host|child] ....";
+    Log() << "usage: zypak-helper [spawn-strategy-test|host-latest|exec-latest|host|child] ....";
     return 1;
   }
 
   std::string_view mode = *it++;
 
-  if (mode == "host-latest") {
-    if (!SpawnLatest(ArgsView(it, args.end()))) {
+  if (mode == "host-latest" || mode == "exec-latest") {
+    bool wrap_with_zypak = mode == "host-latest";
+    if (!SpawnLatest(ArgsView(it, args.end()), wrap_with_zypak)) {
       return 1;
     }
 

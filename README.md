@@ -21,6 +21,13 @@ was removed so that the namespace sandbox would be exclusively used), you need
 to create a stub one. Just `touch chrome-sandbox && chmod +x chrome-sandbox`,
 and everything should work.
 
+### Usage with a wrapper script
+
+If this is wrapping an application that requries some sort of wrapper script,
+make sure you set `CHROME_WRAPPER=` to the path of said script. Otherwise, if the
+application attempts to re-exec itself (i.e. `chrome://restart`), it won't be using
+the wrapper on re-exec, leading to potentially unexpected behavior.
+
 ## Using a different version
 
 If you want to try a different Zypak version for testing, or without using the

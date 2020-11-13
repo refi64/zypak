@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 
 #include <cstring>
+#include <string_view>
 #include <vector>
 
 #include "base/base.h"
@@ -17,6 +18,14 @@
 // Chrome one.
 
 namespace {
+
+using namespace zypak;
+
+bool IsCurrentExe(std::string_view exec) {
+  struct stat self_st, exec_st;
+  return stat("/proc/self/exe", &self_st) != -1 && stat(exec.data(), &exec_st) != -1 &&
+         self_st.st_ino == exec_st.st_ino;
+}
 
 bool HasTypeArg(char* const* argv) {
   constexpr std::string_view kTypeArgPrefix = "--type=";
@@ -35,18 +44,31 @@ bool HasTypeArg(char* const* argv) {
 DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
   auto original = LoadOriginal();
 
+  if (*argv == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   if (file == SandboxPath::instance()->sandbox_path()) {
     file = "zypak-sandbox";
   } else if (!HasTypeArg(argv)) {
     Env::Clear("LD_PRELOAD");
 
-    if (stat("/proc/self/exe", &self_st) != -1 && stat(file, &exec_st) != -1 &&
-        self_st.st_ino == exec_st.st_ino) {
+    if (IsCurrentExe(file)) {
       // exec on the host exe, so pass it through the sandbox.
       // "Leaking" calls to 'new' doesn't matter here since we're about to exec anyway.
       std::vector<const char*> c_argv;
       c_argv.push_back("zypak-helper");
-      c_argv.push_back("host-latest");
+
+      // Swap out the main binary to the wrapper if one was used, and assume the wrapper will use
+      // zypak-wrapper.sh itself (i.e. we don't need to handle it here).
+      if (auto wrapper = Env::Get("CHROME_WRAPPER")) {
+        c_argv.push_back("exec-latest");
+        c_argv.push_back(wrapper->data());
+        argv++;
+      } else {
+        c_argv.push_back("host-latest");
+      }
 
       for (; *argv != nullptr; argv++) {
         c_argv.push_back(*argv);

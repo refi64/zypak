@@ -14,7 +14,7 @@
 
 namespace zypak {
 
-bool SpawnLatest(std::vector<std::string_view> args) {
+bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak) {
   dbus::Bus* bus = dbus::Bus::Acquire();
   ZYPAK_ASSERT(bus);
 
@@ -25,16 +25,20 @@ bool SpawnLatest(std::vector<std::string_view> args) {
   dbus::FlatpakPortalProxy::SpawnCall spawn;
   spawn.cwd = cwd.get();
 
-  // XXX: This is similar to sandbox/launcher.cc
-  spawn.env[Env::kZypakBin.data()] = Env::Require(Env::kZypakBin);
-  spawn.env[Env::kZypakLib.data()] = Env::Require(Env::kZypakLib);
   if (Env::Test(Env::kZypakSettingDisableSandbox)) {
     spawn.env[Env::kZypakSettingDisableSandbox.data()] = "1";
   }
 
-  auto helper = std::filesystem::path(Env::Require(Env::kZypakBin)) / "zypak-helper";
-  spawn.argv.push_back(helper.string());
-  spawn.argv.push_back("host");
+  if (wrap_with_zypak) {
+    // XXX: This is similar to sandbox/launcher.cc
+    spawn.env[Env::kZypakBin.data()] = Env::Require(Env::kZypakBin);
+    spawn.env[Env::kZypakLib.data()] = Env::Require(Env::kZypakLib);
+
+    auto helper = std::filesystem::path(Env::Require(Env::kZypakBin)) / "zypak-helper";
+    spawn.argv.push_back(helper.string());
+    spawn.argv.push_back("host");
+  }
+
   for (std::string_view arg : args) {
     spawn.argv.push_back(arg.data());
   }

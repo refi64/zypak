@@ -9,6 +9,6 @@
 
 namespace zypak {
 
-bool SpawnLatest(std::vector<std::string_view> args);
+bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak);
 
 }
