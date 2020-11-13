@@ -38,8 +38,7 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
   if (file == SandboxPath::instance()->sandbox_path()) {
     file = "zypak-sandbox";
   } else if (!HasTypeArg(argv)) {
-    // Check if the file is identical to the current exe, from a re-exec.
-    struct stat self_st, exec_st;
+    Env::Clear("LD_PRELOAD");
 
     if (stat("/proc/self/exe", &self_st) != -1 && stat(file, &exec_st) != -1 &&
         self_st.st_ino == exec_st.st_ino) {

@@ -6,6 +6,7 @@
 #pragma once
 
 #include <optional>
+#include <string_view>
 
 #include "base/base.h"
 
@@ -19,6 +20,8 @@ class Env {
   static std::string_view Require(std::string_view name);
   // Sets the given environment variable.
   static void Set(std::string_view name, std::string_view value, bool overwrite = true);
+  // Clears the given environment variable.
+  static void Clear(std::string_view name);
   // Tests if the variable is set to a truthy value (i.e. not empty, 0, or false).
   static bool Test(std::string_view name);
 

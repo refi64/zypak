@@ -36,6 +36,9 @@ void Env::Set(std::string_view name, std::string_view value, bool overwrite /*= 
 }
 
 // static
+void Env::Clear(std::string_view name) { ZYPAK_ASSERT(unsetenv(name.data()) == 0); }
+
+// static
 bool Env::Test(std::string_view name) {
   if (auto env = Get(name)) {
     return !env->empty() && *env != "0" && *env != "false";
