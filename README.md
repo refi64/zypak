@@ -1,6 +1,6 @@
 # zypak
 
-Allows you to run Electron binaries that require a sandbox in a Flatpak environment,
+Allows you to run Chromium based applications that require a sandbox in a Flatpak environment,
 by using LD_PRELOAD magic and a redirection system that redirects Chromium's sandbox to use
 the Flatpak sandbox.
 
