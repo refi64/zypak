@@ -13,7 +13,10 @@
 
 #include "base/base.h"
 #include "base/debug.h"
+#include "base/str_util.h"
 #include "preload/declare_override.h"
+
+using namespace zypak;
 
 DECLARE_OVERRIDE_THROW(GtkWidget*, gtk_file_chooser_dialog_new, const char* title,
                        GtkWindow* parent, GtkFileChooserAction action,
@@ -44,7 +47,7 @@ DECLARE_OVERRIDE_THROW(GtkWidget*, gtk_file_chooser_dialog_new, const char* titl
   // Stock icons don't work with the portal. Therefore, if that was being used, just drop it
   // entirely and let it use the defaults (which is the semantic meaning of using stock icons
   // anyway).
-  if (strcmp(accept_label, GTK_STOCK_OPEN) == 0) {
+  if (StartsWith(accept_label, "gtk-")) {
     accept_label = nullptr;
   }
 #pragma clang diagnostic pop
