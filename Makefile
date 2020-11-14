@@ -146,6 +146,7 @@ clean :
 
 install : all
 	install -Dm 755 -t $(FLATPAK_DEST)/bin zypak-wrapper.sh
+	ln -sf $(FLATPAK_DEST)/bin/zypak-wrapper{.sh,}
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-helper
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-sandbox
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host.so
