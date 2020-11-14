@@ -1,7 +1,8 @@
 # zypak
 
 Allows you to run Electron binaries that require a sandbox in a Flatpak environment,
-by using LD_PRELOAD magic and a redirected sandbox.
+by using LD_PRELOAD magic and a redirection system that redirects Chromium's sandbox to use
+the Flatpak sandbox.
 
 ## Basic usage
 
@@ -14,9 +15,7 @@ This requires your Flatpak to be using:
 Now, instead of running your Electron binary directly, call it via
 `zypak-wrapper PATH/TO/MY/ELECTRON/BINARY`.
 
-## Common problems
-
-### Usage with a wrapper script
+## Usage with a wrapper script
 
 If this is wrapping an application that requries some sort of wrapper script,
 make sure you set `CHROME_WRAPPER=` to the path of said script. Otherwise, if the
@@ -75,6 +74,57 @@ For basic file dialog use, these may be fine.
 - Set `ZYPAK_DISABLE_SANDBOX=1` to disable the use of the `--sandbox` argument
   (required if the Electron binary is not installed, as the sandboxed calls will be unable to locate the Electron binary).
 
-## Random notes
+## How does it work?
 
-This has been successfully lightly tested with Chromium itself.
+Zypak works by using LD_PRELOAD to trick Chromium into thinking its SUID sandbox is present and still
+setuid, but all calls to it get instead redirected to another binary: Zypak's own sandbox.
+
+This sandbox has two strategies to sandbox Chromium:
+
+### The mimic strategy
+
+The *mimic strategy* works on the majority of Flatpak versions. It works by mimicking the zygote
+and redirecting all the incoming commands to actually become `flatpak-spawn` commands, then
+returning those PIDs as the results of the "fork". This *does* have the side effect of slower
+startup and higher memory usage, since there is no true zygote running, and thus this is only used
+where the spawn strategy (see below) does not work.
+
+### The spawn strategy
+
+The *spawn strategy* a far better implementation, available on all Flatpak versions 1.8.2+. (Flatpak
+1.8.0 and 1.8.1 are not really supported.) It relies on two particular new features in 1.8.0:
+`expose-pids` and `SpawnStarted`:
+
+- `expose-pids` lets the process that opens a new sandbox see the PIDs of the sandboxed processes.
+  This essentially means it behaves much like using user namespaces to perform sandboxing and allows
+  Chromium to see the true PIDs of its child processes rather than trying to use an intermediary
+  (`flatpak-spawn` in the mimic strategy).
+- `SpawnStarted` is emitted when a sandboxed process fully starts, and it passes along the PID that
+  can be used for the parent to reach the sandboxed children.
+
+In this strategy, the zygote is no longer mimicked; rather, the actual zygote is run sandboxed, just
+like Chromium's official sandboxes work. The only difference is, the Flatpak sandbox is used instead
+of Chromium's setuid or namespace sandboxes.
+
+This is a bit messy because Flatpak's sandboxing APIs all use D-Bus, so a new D-Bus session must be
+"injected" into the main Chromium process, which then runs in a separate thread and handles all the
+sandbox functionality. When the separate zypak-sandbox binary is started, it talks to this
+"supervisor" thread via a local socket pair, asking it to run the sandboxed process and staying
+alive until the sandboxed process completes. Meanwhile, the supervisor thread will swap out the
+sandbox PID for the true sandboxed process PID.
+
+### Rough layout of execution
+
+- When you use `zypak-wrapper`, it sets up the paths to the Zypak binary and
+  library directories and then calls `zypak-helper`.
+- `zypak-helper` will set up the LD_PRELOAD environment and start the main
+  process.
+    - If the spawn strategy is being used, a supervisor thread is started to manage the
+      sandboxed processes and communication with Flatpak.
+- When Chromium attempts to launch a sandboxed process, `zypak-sandbox` is used as the
+  sandbox instead of the SUID sandbox, and it then does one of the following:
+  - If the mimic strategy is being used, Zypak's mimic zygote will run, replacing
+    the true zygote. All the zygote messages get handled, and process forks instead
+    start a new process via `flatpak-spawn`.
+  - If the spawn strategy is being used, the sandbox will send a message to the supervisor
+    to start a new sandboxed process, then wait for the sandboxed process to exit.
