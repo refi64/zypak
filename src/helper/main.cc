@@ -114,7 +114,10 @@ std::string GetPreload(std::string_view mode, std::string_view libdir) {
   preload_names.push_back(mode.data());
   if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
     preload_names.push_back(std::string(mode) + "-spawn-strategy");
+  } else if (mode == "child") {
+    preload_names.push_back(std::string(mode) + "-mimic-strategy");
   }
+
   if (Env::Test(Env::kZypakSettingForceFilePortal)) {
     ZYPAK_ASSERT(mode == "host");
     preload_names.push_back("host-file-portal");

@@ -16,11 +16,6 @@ Now, instead of running your Electron binary directly, call it via
 
 ## Common problems
 
-If there is no `chrome-sandbox` binary in the Electron app's folder (e.g. it
-was removed so that the namespace sandbox would be exclusively used), you need
-to create a stub one. Just `touch chrome-sandbox && chmod +x chrome-sandbox`,
-and everything should work.
-
 ### Usage with a wrapper script
 
 If this is wrapping an application that requries some sort of wrapper script,
