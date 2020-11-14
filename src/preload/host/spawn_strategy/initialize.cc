@@ -14,17 +14,12 @@
 #include "dbus/bus.h"
 #include "preload/declare_override.h"
 #include "preload/host/spawn_strategy/supervisor.h"
+#include "preload/main_override.h"
 
 using namespace zypak;
 using namespace zypak::preload;
 
-namespace {
-
-using MainType = int (*)(int, char**, char**);
-
-MainType true_main = nullptr;
-
-int ZypakMain(int argc, char** argv, char** envp) {
+int MAIN_OVERRIDE(int argc, char** argv, char** envp) {
   DebugContext::instance()->LoadFromEnvironment();
   DebugContext::instance()->set_name("preload-host-spawn-strategy");
 
@@ -45,13 +40,4 @@ int ZypakMain(int argc, char** argv, char** envp) {
   return ret;
 }
 
-}  // namespace
-
-// Override __libc_start_main so we can run our own custom main that wraps the original main.
-DECLARE_OVERRIDE(int, __libc_start_main, MainType main, int argc, char** argv, void (*init)(void),
-                 void (*finalize)(void), void (*rtld_finalize)(void), void(*stack_end)) {
-  auto original = LoadOriginal();
-
-  true_main = main;
-  return original(ZypakMain, argc, argv, init, finalize, rtld_finalize, stack_end);
-}
+INSTALL_MAIN_OVERRIDE()
