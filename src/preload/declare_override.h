@@ -9,6 +9,8 @@
 
 #include <string_view>
 
+#include "base/base.h"
+
 // Some helpers to assist with loading the original functions.
 namespace declare_override_detail {
 template <typename T>
