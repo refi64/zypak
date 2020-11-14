@@ -5,9 +5,9 @@
 
 #include "preload/host/sandbox_path.h"
 
-static bool EndsWith(std::string_view str, std::string_view suffix) {
-  return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
-}
+#include "base/str_util.h"
+
+using namespace zypak;
 
 std::string_view SandboxPath::sandbox_path() const { return sandbox_path_; }
 

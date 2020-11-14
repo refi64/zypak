@@ -14,6 +14,11 @@ inline bool StartsWith(std::string_view str, std::string_view prefix) {
   return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
 }
 
+// Determines if the string ends with the given prefix.
+inline bool EndsWith(std::string_view str, std::string_view suffix) {
+  return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
+}
+
 // Splits the given string view by the character c, storing each item in the given output iterator.
 template <typename It>
 void SplitInto(std::string_view str, char c, It out) {
