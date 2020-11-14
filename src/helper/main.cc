@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
 
   ArgsView command(it, args.end());
 
-  if (mode == "host" && Strace::ShouldTraceTarget(Strace::Target::kHost)) {
+  if (mode == "host" && Strace::ShouldTraceHost()) {
     ArgsView new_command;
     new_command.push_back("strace");
     new_command.push_back("-f");

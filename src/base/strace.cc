@@ -4,25 +4,49 @@
 
 #include "strace.h"
 
+#include <iterator>
+#include <set>
+
 #include "base/env.h"
+#include "base/str_util.h"
 
 namespace zypak {
 
+namespace {
+
+constexpr std::string_view kStraceAll = "all";
+constexpr std::string_view kStraceHost = "host";
+constexpr std::string_view kStraceChild = "child";
+constexpr std::string_view kStraceChildTypes = "child:";
+
+}  // namespace
+
 // static
-bool Strace::ShouldTraceTarget(Strace::Target target) {
+bool Strace::ShouldTraceHost() {
+  auto target_env = Env::Get(Env::kZypakSettingStrace);
+  return target_env && (*target_env == kStraceAll || *target_env == kStraceHost);
+}
+
+// static
+bool Strace::ShouldTraceChild(std::string_view child_type) {
   auto target_env = Env::Get(Env::kZypakSettingStrace);
   if (!target_env) {
     return false;
-  } else if (*target_env == "all") {
+  }
+
+  if (*target_env == kStraceAll || *target_env == kStraceChild) {
     return true;
   }
 
-  switch (target) {
-  case Target::kHost:
-    return *target_env == "host";
-  case Target::kChild:
-    return *target_env == "child";
+  if (StartsWith(*target_env, kStraceChildTypes)) {
+    target_env->remove_prefix(kStraceChildTypes.length());
+
+    std::set<std::string_view> types;
+    SplitInto(*target_env, ',', std::inserter(types, types.end()));
+    return types.find(child_type) != types.end();
   }
+
+  return false;
 }
 
 // static

@@ -73,6 +73,8 @@ For basic file dialog use, these may be fine.
 - Set `ZYPAK_DEBUG=1` to enable debug logging.
 - Set `ZYPAK_STRACE=all` to run strace on the host and child processes.
   - To make it host-only or child-only, set `ZYPAK_STRACE=host` or `ZYPAK_STRACE=child`, respectively.
+  - If only some child processes should be searched, use `ZYPAK_STRACE=child:type1,type2,...`, e.g.
+    `ZYPAK_STRACE=child:ppapi,utility` to trace all children of `--type=utility` and `--type=ppapi`.
   - Set `ZYPAK_STRACE_FILTER=expr` to pass a filter expression to `strace -e`.
   - In order to avoid arguments being ellipsized, set `ZYPAK_STRACE_NO_LINE_LIMIT=1`.
 - Set `ZYPAK_DISABLE_SANDBOX=1` to disable the use of the `--sandbox` argument

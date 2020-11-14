@@ -27,13 +27,15 @@ class Launcher {
   // A holder for the zypak-helper process that will generate the command line from an FD map.
   class Helper {
    public:
-    Helper(std::string helper_path) : helper_path_(std::move(helper_path)) {}
+    Helper(std::string helper_path, std::string child_type)
+        : helper_path_(std::move(helper_path)), child_type_(std::move(child_type)) {}
 
     // Builds a zypak-helper command line that will wrap the command to run.
     std::vector<std::string> BuildCommandWrapper(const FdMap& fd_map) const;
 
    private:
     std::string helper_path_;
+    std::string child_type_;
   };
 
   // A delegate is responsible for actually executing the command, given various requirements for

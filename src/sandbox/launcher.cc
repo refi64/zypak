@@ -12,6 +12,7 @@
 #include "base/container_util.h"
 #include "base/debug.h"
 #include "base/env.h"
+#include "base/str_util.h"
 #include "base/strace.h"
 
 namespace zypak::sandbox {
@@ -25,7 +26,7 @@ constexpr std::string_view kSandboxNsEnabled = "1";
 std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_map) const {
   std::vector<std::string> wrapper;
 
-  if (Strace::ShouldTraceTarget(Strace::Target::kChild)) {
+  if (Strace::ShouldTraceChild(child_type_)) {
     wrapper.push_back("strace");
     wrapper.push_back("-f");
 
@@ -52,10 +53,19 @@ std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_m
 }
 
 bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
+  // XXX: similar to HasTypeArg in the preload code
+  std::string child_type;
+  constexpr std::string_view kTypeArgPrefix = "--type=";
+  for (const std::string& arg : command) {
+    if (StartsWith(arg, kTypeArgPrefix)) {
+      child_type = arg.substr(kTypeArgPrefix.size());
+      break;
+    }
+  }
+
   int flags = kWatchBus;
 
-  if (std::find(command.begin(), command.end(), "--type=gpu-process") != command.end() ||
-      Env::Test(Env::kZypakSettingAllowGpu)) {
+  if (child_type == "gpu-process" || Env::Test(Env::kZypakSettingAllowGpu)) {
     flags |= kAllowGpu;
   }
 
@@ -88,7 +98,7 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
   env[kSandboxNetNsVar] = kSandboxNsEnabled;
 
   auto helper_path = std::filesystem::path(bindir.data()) / "zypak-helper";
-  Helper helper(helper_path.string());
+  Helper helper(helper_path.string(), child_type);
 
   return delegate_->Spawn(helper, std::move(command), fd_map, std::move(env),
                           static_cast<Flags>(flags));
