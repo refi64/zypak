@@ -14,7 +14,11 @@ std::string_view SandboxPath::sandbox_path() const { return sandbox_path_; }
 void SandboxPath::set_sandbox_path(std::string_view path) { sandbox_path_ = path; }
 
 bool SandboxPath::LooksLikeSandboxPath(std::string_view path) {
-  return EndsWith(path, "/chrome-sandbox");
+  if (sandbox_path_.empty()) {
+    return EndsWith(path, "/chrome-sandbox");
+  }
+
+  return sandbox_path_ == path;
 }
 
 // static

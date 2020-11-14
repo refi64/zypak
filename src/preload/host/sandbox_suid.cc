@@ -9,18 +9,29 @@
 #include "preload/declare_override.h"
 #include "preload/host/sandbox_path.h"
 
-// Pretend that chrome-sandbox is a setuid binary.
+// Pretend that chrome-sandbox exists and is a setuid binary.
+
+DECLARE_OVERRIDE(int, access, const char* path, int mode) {
+  auto original = LoadOriginal();
+
+  if (SandboxPath::instance()->LooksLikeSandboxPath(path)) {
+    SandboxPath::instance()->set_sandbox_path(path);
+    return 0;
+  }
+
+  return original(path, mode);
+}
 
 DECLARE_OVERRIDE(int, __xstat64, int ver, const char* path, struct stat64* buf) {
   auto original = LoadOriginal();
 
-  int result = original(ver, path, buf);
-  if (SandboxPath::instance()->sandbox_path().empty() && SandboxPath::LooksLikeSandboxPath(path)) {
+  if (SandboxPath::instance()->LooksLikeSandboxPath(path)) {
     buf->st_uid = 0;
-    buf->st_mode |= S_ISUID;
+    buf->st_mode = S_ISUID | S_IXOTH;
 
     SandboxPath::instance()->set_sandbox_path(path);
+    return 0;
   }
 
-  return result;
+  return original(ver, path, buf);
 }

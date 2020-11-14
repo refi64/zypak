@@ -13,8 +13,9 @@ class SandboxPath {
   std::string_view sandbox_path() const;
   void set_sandbox_path(std::string_view path);
 
-  // Does the given path "look" like a sandbox path?
-  static bool LooksLikeSandboxPath(std::string_view path);
+  // If the given path the sandbox path, or if the sandbox path is unset, does the given path "look"
+  // like a sandbox path?
+  bool LooksLikeSandboxPath(std::string_view path);
 
   static SandboxPath* instance() { return &instance_; }
 
