@@ -100,9 +100,10 @@ preload_child_mimic_strategy_SOURCE_DIR := preload/child/mimic_strategy
 preload_child_mimic_strategy_NAME := zypak-preload-child-mimic-strategy
 preload_child_mimic_strategy_DEPS := preload base
 preload_child_mimic_strategy_SOURCES := \
+	fd_storage.cc \
 	initialize.cc \
+	localtime.cc \
 	open_urandom.cc \
-	urandom_fd.cc
 
 $(call build_shlib,preload_child_mimic_strategy)
 

@@ -70,7 +70,8 @@ void SendChildInfoToHost(pid_t child) {
   }
 }
 
-std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> fds) {
+std::optional<pid_t> HandleFork(nickle::Reader* reader, const unique_fd& sandbox_service_fd,
+                                std::vector<unique_fd> fds) {
   std::string process_type;
   int argc;
 
@@ -109,6 +110,14 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> f
   }
 
   FdMap fd_map;
+
+  unique_fd sandbox_service_fd_dup(dup(sandbox_service_fd.get()));
+  if (sandbox_service_fd_dup.invalid()) {
+    Errno() << "Failed to dup sandbox service fd";
+    return {};
+  }
+
+  fd_map.emplace_back(std::move(sandbox_service_fd_dup), kSandboxServiceFd);
 
   int desired_fd_count = 0;
   if (!reader->Read<nickle::codecs::Int>(&desired_fd_count)) {

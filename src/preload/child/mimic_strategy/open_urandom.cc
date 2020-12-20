@@ -4,12 +4,14 @@
 // found in the LICENSE file.
 
 #include <fcntl.h>
+#include <stdarg.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
-#include "preload/child/mimic_strategy/urandom_fd.h"
+#include "preload/child/mimic_strategy/fd_storage.h"
 #include "preload/declare_override.h"
 
+using namespace zypak;
 using namespace zypak::preload;
 
 // Chromium lazily opens a file descriptor to urandom the first time it needs a random number and
@@ -34,8 +36,8 @@ DECLARE_OVERRIDE_THROW(int, open64, const char* pathname, int flags, ...) {
   if (pathname == "/dev/urandom"sv) {
     // If fd == -1, the urandom fd hasn't been loaded yet (so this is probably during
     // initialization).
-    if (int fd = GetUrandomFd(); fd != -1) {
-      return fd;
+    if (const unique_fd& fd = FdStorage::instance()->urandom_fd(); !fd.invalid()) {
+      return fd.get();
     }
   }
 

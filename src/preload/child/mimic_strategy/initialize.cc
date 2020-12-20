@@ -3,12 +3,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "preload/child/mimic_strategy/fd_storage.h"
 #include "preload/main_override.h"
 
 using namespace zypak::preload;
 
 int MAIN_OVERRIDE(int argc, char** argv, char** envp) {
-  InitUrandomFd();
+  FdStorage::instance()->Init();
   return true_main(argc, argv, envp);
 }
 

@@ -17,6 +17,7 @@
 
 namespace zypak::sandbox::mimic_strategy {
 
-std::optional<pid_t> HandleFork(nickle::Reader* reader, std::vector<unique_fd> fds);
+std::optional<pid_t> HandleFork(nickle::Reader* reader, const unique_fd& sandbox_service_fd,
+                                std::vector<unique_fd> fds);
 
 }

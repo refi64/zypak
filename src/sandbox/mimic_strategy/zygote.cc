@@ -28,7 +28,7 @@ std::optional<MimicZygoteRunner> MimicZygoteRunner::Create() {
     return {};
   }
 
-  return MimicZygoteRunner(std::move(*ev));
+  return MimicZygoteRunner(std::move(*ev), unique_fd(kSandboxServiceFd));
 }
 
 void MimicZygoteRunner::HandleMessage(EvLoop::SourceRef source) {
@@ -70,7 +70,7 @@ void MimicZygoteRunner::HandleMessage(EvLoop::SourceRef source) {
 
   switch (command) {
   case ZygoteCommand::kFork:
-    if (auto child = HandleFork(&reader, std::move(fds))) {
+    if (auto child = HandleFork(&reader, sandbox_service_fd_, std::move(fds))) {
       if (auto [_, inserted] = children_.insert(*child); !inserted) {
         Log() << "Already tracking PID " << *child;
       }
