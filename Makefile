@@ -154,4 +154,5 @@ install : all
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-file-portal.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-spawn-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child.so
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child-mimic-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child-spawn-strategy.so
