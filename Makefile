@@ -10,7 +10,7 @@ GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)
 
 CXX := clang++
 CXXFLAGS := \
-		-fstack-protector-all -Wall -Werror \
+		-fstack-protector-all -fstack-clash-protection -Wall -Werror \
 		-std=c++17 -g -pthread \
 		-Inickle -Isrc \
 		$(LIBSYSTEMD_CFLAGS) $(DBUS_CFLAGS) $(GTK_CFLAGS)
