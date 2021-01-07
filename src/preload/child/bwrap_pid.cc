@@ -12,42 +12,38 @@
 #include "base/base.h"
 #include "preload/declare_override.h"
 
-// If this process is sandboxed, pretend it's PID 1 to pass the sandbox client check.
+// If this process is sandboxed, pretend it's PID 1 to pass the sandbox client check. We know when
+// the PID is about to be tested because getenv(SBX_CHROME_API_PRV) is called right before. Note
+// that other places of the code in debug builds expect the pid to equal the tid, so the PID is
+// only faked that one time.
 
 namespace {
 
-enum class State { kUnknown, kFake, kNoFake };
+std::atomic<bool> fake_next(false);
 
-std::atomic<State> state(State::kUnknown);
+constexpr std::string_view kSandboxApiEnv = "SBX_CHROME_API_PRV";
 
 }  // namespace
+
+// getenv(SBX_CHROME_API_PRV) always
+DECLARE_OVERRIDE(char*, getenv, const char* name) {
+  auto original = LoadOriginal();
+
+  if (name == kSandboxApiEnv) {
+    fake_next.store(true);
+  }
+
+  return original(name);
+}
 
 DECLARE_OVERRIDE(pid_t, getpid) {
   auto original = LoadOriginal();
 
   pid_t res = original();
 
-  // NOTE: This is technically racy, but the worst case scenario is just that this is run twice.
-  if (getenv("SBX_CHROME_API_PRV")) {
-    if (state.load() == State::kUnknown) {
-      if (res == 2) {
-        state = State::kFake;
-      } else {
-        // Check if the parent is strace, if so still override the value.
-        std::string path("/proc/"s + std::to_string(getppid()) + "/comm");
-        std::ifstream is(path);
-        std::string line;
-        if (is && std::getline(is, line) && line == "strace") {
-          state = State::kFake;
-        } else {
-          state = State::kNoFake;
-        }
-      }
-    }
-
-    if (state.load() == State::kFake) {
-      return 1;
-    }
+  bool test = true;
+  if (fake_next.compare_exchange_strong(test, false, std::memory_order_relaxed)) {
+    return 1;
   }
 
   return res;
