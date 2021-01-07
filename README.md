@@ -22,6 +22,20 @@ make sure you set `CHROME_WRAPPER=` to the path of said script. Otherwise, if th
 application attempts to re-exec itself (i.e. `chrome://restart`), it won't be using
 the wrapper on re-exec, leading to potentially unexpected behavior.
 
+## Alternate sandbox binary names
+
+Some applications like Microsoft Edge use a custom file name for the sandbox binary name, rather
+than the default of `chrome-sandbox`. In that case, you may see messages like this:
+
+```
+The SUID sandbox helper binary was found, but is not configured correctly. Rather than run without
+sandboxing I'm aborting now. You need to make sure that /app/extra/msedge-sandbox is owned by root
+and has mode 4755.
+```
+
+To fix this, set `ZYPAK_SANDBOX_FILENAME=the-sandbox-basename`, e.g.
+`ZYPAK_SANDBOX_FILENAME=msedge-sandbox`.
+
 ## Using a different version
 
 If you want to try a different Zypak version for testing, or without using the
