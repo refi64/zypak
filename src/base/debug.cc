@@ -13,6 +13,7 @@
 #include <iostream>
 
 #include "base/env.h"
+#include "base/singleton.h"
 
 namespace zypak {
 
@@ -55,9 +56,10 @@ std::string_view DebugContext::name() const { return name_; }
 
 void DebugContext::set_name(std::string_view name) { name_ = name; }
 
-DebugContext* DebugContext::instance() { return &instance_; }
-
-DebugContext DebugContext::instance_;
+DebugContext* DebugContext::instance() {
+  static Singleton<DebugContext> instance;
+  return instance.get();
+}
 
 debug_internal::LogStream Log() { return debug_internal::LogStream(&std::cerr); }
 

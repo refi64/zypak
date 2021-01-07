@@ -37,8 +37,6 @@ class DebugContext {
  private:
   bool enabled_;
   std::string name_;
-
-  static DebugContext instance_;
 };
 
 // Output logging streams. All log to stderr, but Errno also prints the string value of
