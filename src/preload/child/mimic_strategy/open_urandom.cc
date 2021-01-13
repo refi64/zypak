@@ -42,5 +42,5 @@ DECLARE_OVERRIDE_THROW(int, open64, const char* pathname, int flags, ...) {
   }
 
   // tcmalloc doesn't like if we use dlopen early on, so just call the syscall directly.
-  return syscall(__NR_open, pathname, flags, mode);
+  return syscall(__NR_openat, AT_FDCWD, pathname, flags, mode);
 }
