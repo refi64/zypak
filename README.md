@@ -63,19 +63,6 @@ modules somewhere in your Flatpak manifest:
       tag: THE_RELEASE_TAG
 ```
 
-## Experimental functionality
-
-### Forcing use of the file chooser portal
-
-For Electron apps, you can run them with `ZYPAK_FORCE_FILE_PORTAL=1` to force the use of the file
-chooser portal over the custom GTK-drawn dialogs. This comes with some very notable trade-offs:
-
-- Selecting directories does not work on any systems with xdg-desktop-portal < 1.5.2.
-- The methods for overriding this are very hacky and will likely not work in all cases.
-  - In particular, any apps that use a transient file chooser will *not* work.
-
-For basic file dialog use, these may be fine.
-
 ## Debugging
 
 - Set `ZYPAK_DEBUG=1` to enable debug logging.

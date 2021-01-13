@@ -6,14 +6,12 @@ LIBSYSTEMD_LDLIBS := $(shell pkg-config --libs libsystemd)
 DBUS_CFLAGS := $(shell pkg-config --cflags dbus-1)
 DBUS_LDLIBS := $(shell pkg-config --libs dbus-1)
 
-GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)
-
 CXX := clang++
 CXXFLAGS := \
 		-fstack-protector-all -fstack-clash-protection -Wall -Werror \
 		-std=c++17 -g -pthread \
 		-Inickle -Isrc \
-		$(LIBSYSTEMD_CFLAGS) $(DBUS_CFLAGS) $(GTK_CFLAGS)
+		$(LIBSYSTEMD_CFLAGS) $(DBUS_CFLAGS)
 
 BUILD := build
 OBJ := $(BUILD)/obj
@@ -65,16 +63,6 @@ preload_host_SOURCES := \
 	sandbox_suid.cc \
 
 $(call build_shlib,preload_host)
-
-preload_host_file_portal_SOURCE_DIR := preload/host/file_portal
-preload_host_file_portal_NAME := zypak-preload-host-file-portal
-preload_host_file_portal_DEPS := preload base
-preload_host_file_portal_SOURCES := \
-	casts.cc \
-	native_dialog_actions.cc \
-	use_native_file_chooser.cc \
-
-$(call build_shlib,preload_host_file_portal)
 
 preload_host_spawn_strategy_SOURCE_DIR := preload/host/spawn_strategy
 preload_host_spawn_strategy_NAME := zypak-preload-host-spawn-strategy
@@ -151,7 +139,6 @@ install : all
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-helper
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-sandbox
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host.so
-	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-file-portal.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-spawn-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child-mimic-strategy.so

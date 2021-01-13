@@ -36,7 +36,6 @@ class Env {
   static constexpr std::string_view kZypakSettingAllowNetwork = "ZYPAK_ALLOW_NETWORK";
   static constexpr std::string_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
   static constexpr std::string_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
-  static constexpr std::string_view kZypakSettingForceFilePortal = "ZYPAK_FORCE_FILE_PORTAL";
   static constexpr std::string_view kZypakSettingSandboxFilename = "ZYPAK_SANDBOX_FILENAME";
 };
 
