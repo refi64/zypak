@@ -4,6 +4,8 @@
 
 #include "sandbox/launcher.h"
 
+#include <unistd.h>
+
 #include <filesystem>
 #include <iterator>
 #include <string_view>
@@ -22,6 +24,8 @@ constexpr std::string_view kSandboxApiValue = "1";
 constexpr std::string_view kSandboxPidNsVar = "SBX_PID_NS";
 constexpr std::string_view kSandboxNetNsVar = "SBX_NET_NS";
 constexpr std::string_view kSandboxNsEnabled = "1";
+
+constexpr std::string_view kXdgConfigHomeVar = "XDG_CONFIG_HOME";
 
 std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_map) const {
   std::vector<std::string> wrapper;
@@ -97,11 +101,21 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
   env[kSandboxPidNsVar] = kSandboxNsEnabled;
   env[kSandboxNetNsVar] = kSandboxNsEnabled;
 
+  std::vector<std::string> exposed_paths;
+  if (auto path = Env::Get(Env::kZypakSettingExposeWidevinePath);
+      path && !path->empty() && access(path->data(), F_OK) == 0) {
+    exposed_paths.push_back(std::string(path->data()));
+
+    // The Widevine data is found relative to $XDG_CONFIG_HOME, which is not set
+    // by default when running a sandboxed process.
+    env[kXdgConfigHomeVar] = Env::Require(kXdgConfigHomeVar);
+  }
+
   auto helper_path = std::filesystem::path(bindir.data()) / "zypak-helper";
   Helper helper(helper_path.string(), child_type);
 
   return delegate_->Spawn(helper, std::move(command), fd_map, std::move(env),
-                          static_cast<Flags>(flags));
+                          std::move(exposed_paths), static_cast<Flags>(flags));
 }
 
 }  // namespace zypak::sandbox

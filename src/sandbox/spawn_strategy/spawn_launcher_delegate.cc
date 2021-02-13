@@ -18,6 +18,7 @@ namespace zypak::sandbox::spawn_strategy {
 
 bool SpawnLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<std::string> command,
                                   const FdMap& fd_map, EnvMap env,
+                                  std::vector<std::string> exposed_paths,
                                   Launcher::Flags flags) /*override*/ {
   std::vector<std::string> full_command;
 
@@ -50,6 +51,11 @@ bool SpawnLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
   for (const auto& [var, value] : env) {
     ZYPAK_ASSERT(writer.Write<nickle::codecs::StringView>(var));
     ZYPAK_ASSERT(writer.Write<nickle::codecs::StringView>(value));
+  }
+
+  ZYPAK_ASSERT(writer.Write<nickle::codecs::UInt32>(exposed_paths.size()));
+  for (const auto& path : exposed_paths) {
+    ZYPAK_ASSERT(writer.Write<nickle::codecs::String>(path));
   }
 
   int spawn_flags = dbus::FlatpakPortalProxy::kSpawnFlags_ExposePids |

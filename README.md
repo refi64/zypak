@@ -22,6 +22,34 @@ make sure you set `CHROME_WRAPPER=` to the path of said script. Otherwise, if th
 application attempts to re-exec itself (i.e. `chrome://restart`), it won't be using
 the wrapper on re-exec, leading to potentially unexpected behavior.
 
+## Widevine support
+
+Chromium and variants often cannot legally distribute Widevine themselves, so the binaries are
+downloaded at runtime, usually into a folder named `WidevineCdm` located somewhere under the
+browser's data storage directory. For instance:
+
+- Chromium downloads Widevine to:
+  `~/.var/app/org.chromium.Chromium/config/chromium/WidevineCdm`
+- Brave downloads Widevine to:
+  `~/.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser/WidevineCdm`
+
+This directory will also usually contain one or more of these files:
+
+- `latest-component-updated-widevine-cdm`
+- `manifest.json`
+
+In order for the Widevine path to be exposed to the sandbox, you must set
+`ZYPAK_EXPOSE_WIDEVINE_PATH=` to the full path to this Widevine directory. Otherwise, the CDM module
+will be downloaded, but the browser will be unable to load it.
+
+The easiest way to test if Widevine is working is [this test page](https://bitmovin.com/demos/drm);
+if `ZYPAK_EXPOSE_WIDEVINE_PATH=` was set incorrectly, you'll see a message like this:
+
+```
+Unable to instantiate a key system supporting the required combinations
+(DRM_NO_KEY_SYSTEM)
+```
+
 ## Alternate sandbox binary names
 
 Some applications like Microsoft Edge use a custom file name for the sandbox binary name, rather

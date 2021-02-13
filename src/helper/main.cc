@@ -68,6 +68,15 @@ void DetermineZygoteStrategy() {
   Env::Set(Env::kZypakZygoteStrategySpawn, "1");
 }
 
+bool SanityCheckWidevinePath(std::string_view widevine_path) {
+  if (!EndsWith(widevine_path, "WidevineCdm") && !EndsWith(widevine_path, "WidevineCdm/")) {
+    Log() << "Rejecting potentially incorrect Widevine CDM path: " << widevine_path;
+    return false;
+  }
+
+  return true;
+}
+
 bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
   FdMap fd_map;
 
@@ -152,6 +161,13 @@ int main(int argc, char** argv) {
 
     if (mode == "spawn-strategy-test") {
       return !Env::Test(Env::kZypakZygoteStrategySpawn);
+    }
+
+    if (auto widevine_path = Env::Get(Env::kZypakSettingExposeWidevinePath);
+        widevine_path && !widevine_path->empty()) {
+      if (!SanityCheckWidevinePath(*widevine_path)) {
+        return 1;
+      }
     }
   } else if (mode == "child") {
     if (!ApplyFdMapFromArgs(&it, args.end())) {

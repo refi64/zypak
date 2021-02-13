@@ -4,12 +4,25 @@
 
 #include "dbus/flatpak_portal_proxy.h"
 
+#include <fcntl.h>
+
 #include "base/debug.h"
 #include "dbus/bus_message.h"
 #include "dbus/bus_readable_message.h"
 #include "dbus/bus_writable_message.h"
 
 namespace zypak::dbus {
+
+bool FlatpakPortalProxy::SpawnOptions::ExposePathRo(std::string_view path) {
+  unique_fd fd(HANDLE_EINTR(open(path.data(), O_PATH | O_NOFOLLOW)));
+  if (fd.invalid()) {
+    Errno() << "Failed to expose '" << path << "' into sandbox";
+    return false;
+  }
+
+  sandbox_expose_ro.push_back(std::move(fd));
+  return true;
+}
 
 void FlatpakPortalProxy::AttachToBus(Bus* bus) {
   ZYPAK_ASSERT(bus_ == nullptr);
@@ -124,13 +137,30 @@ MethodCall FlatpakPortalProxy::BuildSpawnMethodCall(SpawnCall spawn) {
 
   {
     constexpr std::string_view kOptionSandboxFlags = "sandbox-flags";
+    constexpr std::string_view kOptionSandboxExposeFdRo = "sandbox-expose-fd-ro";
 
     MessageWriter options_writer = writer.EnterContainer<TypeCode::kArray>("{sv}");
-    MessageWriter pair_writer = options_writer.EnterContainer<TypeCode::kDictEntry>();
-    pair_writer.Write<TypeCode::kString>(kOptionSandboxFlags);
 
-    MessageWriter value_writer = pair_writer.EnterContainer<TypeCode::kVariant>("u");
-    value_writer.Write<TypeCode::kUInt32>(static_cast<std::uint32_t>(spawn.options.sandbox_flags));
+    if (spawn.options.sandbox_flags) {
+      MessageWriter pair_writer = options_writer.EnterContainer<TypeCode::kDictEntry>();
+      pair_writer.Write<TypeCode::kString>(kOptionSandboxFlags);
+
+      MessageWriter value_writer = pair_writer.EnterContainer<TypeCode::kVariant>("u");
+      value_writer.Write<TypeCode::kUInt32>(
+          static_cast<std::uint32_t>(spawn.options.sandbox_flags));
+    }
+
+    if (!spawn.options.sandbox_expose_ro.empty()) {
+      MessageWriter pair_writer = options_writer.EnterContainer<TypeCode::kDictEntry>();
+      pair_writer.Write<TypeCode::kString>(kOptionSandboxExposeFdRo);
+
+      MessageWriter value_writer = pair_writer.EnterContainer<TypeCode::kVariant>("ah");
+      MessageWriter array_writer = value_writer.EnterContainer<TypeCode::kArray>("h");
+
+      for (const unique_fd& fd : spawn.options.sandbox_expose_ro) {
+        array_writer.Write<TypeCode::kHandle>(fd.get());
+      }
+    }
   }
 
   return call;

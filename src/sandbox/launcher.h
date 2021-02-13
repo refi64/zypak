@@ -47,7 +47,7 @@ class Launcher {
 
     virtual ~Delegate() {}
     virtual bool Spawn(const Helper& helper, std::vector<std::string> command, const FdMap& fd_map,
-                       EnvMap env, Flags flags) = 0;
+                       EnvMap env, std::vector<std::string> exposed_paths, Flags flags) = 0;
   };
 
   Launcher(Delegate* delegate) : delegate_(delegate) {}

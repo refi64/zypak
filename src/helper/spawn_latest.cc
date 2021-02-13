@@ -34,6 +34,10 @@ bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak) {
     spawn.env[Env::kZypakBin.data()] = Env::Require(Env::kZypakBin);
     spawn.env[Env::kZypakLib.data()] = Env::Require(Env::kZypakLib);
 
+    if (auto widevine_path = Env::Get(Env::kZypakSettingExposeWidevinePath)) {
+      spawn.env[Env::kZypakSettingExposeWidevinePath.data()] = *widevine_path;
+    }
+
     auto helper = std::filesystem::path(Env::Require(Env::kZypakBin)) / "zypak-helper";
     spawn.argv.push_back(helper.string());
     spawn.argv.push_back("host");

@@ -16,7 +16,7 @@ class MimicLauncherDelegate : public Launcher::Delegate {
       : pid_oracle_(std::move(pid_oracle)), pid_out_(pid_out) {}
 
   bool Spawn(const Launcher::Helper& helper, std::vector<std::string> command, const FdMap& fd_map,
-             EnvMap env, Launcher::Flags flags) override;
+             EnvMap env, std::vector<std::string> exposed_paths, Launcher::Flags flags) override;
 
  private:
   void ExecZygoteChild(std::vector<std::string> command);

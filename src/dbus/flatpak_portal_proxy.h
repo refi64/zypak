@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <unordered_map>
+#include <vector>
 
 #include "base/base.h"
 #include "base/fd_map.h"
@@ -65,6 +66,10 @@ class FlatpakPortalProxy {
 
     static constexpr SandboxFlags kNoSandboxFlags = static_cast<SandboxFlags>(0);
     SandboxFlags sandbox_flags = kNoSandboxFlags;
+
+    std::vector<unique_fd> sandbox_expose_ro;
+
+    bool ExposePathRo(std::string_view path);
   };
 
   FlatpakPortalProxy(Bus* bus = nullptr) : bus_(bus) {}

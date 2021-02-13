@@ -15,6 +15,7 @@ namespace zypak::sandbox::mimic_strategy {
 
 bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<std::string> command,
                                   const FdMap& fd_map, EnvMap env,
+                                  std::vector<std::string> exposed_paths,
                                   Launcher::Flags flags) /*override*/ {
   std::vector<std::string> spawn_command;
   spawn_command.push_back("flatpak-spawn");
@@ -35,6 +36,10 @@ bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
 
   for (const auto& assignment : fd_map) {
     spawn_command.push_back("--forward-fd="s + std::to_string(assignment.fd().get()));
+  }
+
+  for (const auto& path : exposed_paths) {
+    spawn_command.push_back("--sandbox-expose-path-ro="s + path);
   }
 
   ExtendContainerMove(&spawn_command, helper.BuildCommandWrapper(fd_map));

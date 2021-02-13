@@ -306,6 +306,25 @@ void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
     spawn.env[var] = value;
   }
 
+  std::uint32_t exposed_paths_size;
+  if (!reader.Read<nickle::codecs::UInt32>(&exposed_paths_size)) {
+    Log() << "Failed to read exposed paths size";
+    return;
+  }
+
+  for (std::uint32_t i = 0; i < exposed_paths_size; i++) {
+    std::string path;
+    if (!reader.Read<nickle::codecs::String>(&path)) {
+      Log() << "Failed to read exposed path # " << i;
+      return;
+    }
+
+    if (!spawn.options.ExposePathRo(path)) {
+      Log() << "Failed to open path for exposing into sandbox: " << path;
+      return;
+    }
+  }
+
   std::uint32_t spawn_flags;
   std::uint32_t sandbox_flags;
   if (!reader.Read<nickle::codecs::UInt32>(&spawn_flags) ||
