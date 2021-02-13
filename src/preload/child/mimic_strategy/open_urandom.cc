@@ -37,7 +37,7 @@ DECLARE_OVERRIDE_THROW(int, open64, const char* pathname, int flags, ...) {
     // If fd == -1, the urandom fd hasn't been loaded yet (so this is probably during
     // initialization).
     if (const unique_fd& fd = FdStorage::instance()->urandom_fd(); !fd.invalid()) {
-      return fd.get();
+      return dup(fd.get());
     }
   }
 
