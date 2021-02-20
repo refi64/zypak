@@ -42,7 +42,7 @@ void DisableSource(sd_event_source* source) {
 
 // static
 std::optional<EvLoop> EvLoop::Create() {
-  unique_fd notify_defer(eventfd(0, 0));
+  unique_fd notify_defer(eventfd(0, EFD_NONBLOCK));
   if (notify_defer.invalid()) {
     Errno() << "Failed to create notify eventfd";
     return {};
@@ -191,6 +191,16 @@ std::optional<EvLoop::SourceRef> EvLoop::TakeFd(unique_fd fd, Events events,
 }
 
 EvLoop::WaitResult EvLoop::Wait() {
+  int pending = sd_event_prepare(event_.get());
+  if (pending < 0) {
+    Errno(-pending) << "Failed to prepare event loop";
+    return WaitResult::kError;
+  } else if (pending > 0) {
+    // No need to wait, we know some events are ready.
+    ClearNotifyDeferFd();
+    return WaitResult::kReady;
+  }
+
   std::array<struct pollfd, 2> pfds;
 
   pfds[0].fd = sd_event_get_fd(event_.get());
@@ -215,8 +225,16 @@ EvLoop::WaitResult EvLoop::Wait() {
 
     if ((pfds[0].revents | pfds[1].revents) & POLLIN) {
       if (pfds[1].revents & POLLIN) {
-        std::uint64_t value;
-        ZYPAK_ASSERT_WITH_ERRNO(eventfd_read(notify_defer_fd_.get(), &value) != -1);
+        ClearNotifyDeferFd();
+      }
+
+      int pending = sd_event_wait(event_.get(), 0);
+      if (pending < 0) {
+        Errno(-pending) << "Failed to update event loop waiting state";
+        return WaitResult::kError;
+      } else if (pending == 0) {
+        Log() << "poll found events, but sd-event found none";
+        return WaitResult::kIdle;
       }
 
       return WaitResult::kReady;
@@ -231,16 +249,12 @@ EvLoop::WaitResult EvLoop::Wait() {
 }
 
 EvLoop::DispatchResult EvLoop::Dispatch() {
-  int result = sd_event_run(event_.get(), 0);
+  int result = sd_event_dispatch(event_.get());
   if (result < 0) {
-    if (result == -ESTALE && sd_event_get_state(event_.get()) == SD_EVENT_FINISHED) {
-      return DispatchResult::kExit;
-    }
-
     Errno(-result) << "Failed to run event loop iteration";
     return DispatchResult::kError;
   } else if (result == 0) {
-    Debug() << "Nothing to dispatch";
+    return DispatchResult::kExit;
   }
 
   return DispatchResult::kContinue;
@@ -260,6 +274,11 @@ EvLoop::ExitStatus EvLoop::exit_status() const {
   ZYPAK_ASSERT_SD_ERROR(sd_event_get_exit_code(event_.get(), &code));
 
   return static_cast<EvLoop::ExitStatus>(code);
+}
+
+void EvLoop::ClearNotifyDeferFd() {
+  std::uint64_t value;
+  ZYPAK_ASSERT_WITH_ERRNO(eventfd_read(notify_defer_fd_.get(), &value) != -1 || errno == EAGAIN);
 }
 
 template <typename Handler>

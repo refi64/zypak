@@ -200,6 +200,8 @@ class EvLoop {
   // efficient since it's not creating and polling on as many fds.
   unique_fd notify_defer_fd_;
 
+  void ClearNotifyDeferFd();
+
   template <typename Handler>
   SourceRef SourceSetup(sd_event_source* source, Handler handler);
 
