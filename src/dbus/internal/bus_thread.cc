@@ -61,6 +61,8 @@ std::unique_ptr<BusThread> BusThread::Create(BusConnection connection,
                                                   std::move(tasks)));
 }
 
+bool BusThread::IsRunning() const { return thread_.joinable(); }
+
 void BusThread::Start() {
   // Make sure if this is a restart, the shutdown flag isn't set.
   shutdown_flag_->store(false);

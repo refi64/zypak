@@ -51,6 +51,9 @@ class Bus {
   // Returns the event loop underlying the bus instance.
   RecursiveGuardedValue<EvLoop>* evloop() { return bus_thread_->evloop(); }
 
+  // Returns whether or not the bus thread is currently running.
+  bool IsRunning() const { return bus_thread_->IsRunning(); }
+
   // Fully shuts down the bus and its associated thread. The bus is considered invalid at this
   // point and may not be reused.
   void Shutdown();

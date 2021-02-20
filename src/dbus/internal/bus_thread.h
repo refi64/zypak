@@ -50,6 +50,8 @@ class BusThread {
   DBusConnection* connection() { return connection_.get(); }
   RecursiveGuardedValue<EvLoop>* evloop() { return &ev_; }
 
+  bool IsRunning() const;
+
   void Start();
   void Shutdown();
 

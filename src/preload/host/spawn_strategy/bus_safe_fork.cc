@@ -33,6 +33,10 @@ DECLARE_OVERRIDE(pid_t, fork) {
   std::unique_lock<std::mutex> guard(bus_shutdown_lock_);
 
   dbus::Bus* bus = dbus::Bus::Acquire();
+  if (!bus->IsRunning()) {
+    Debug() << "Note: bus thread is not running, skipping fork override";
+    return original();
+  }
 
   Debug() << "Prepare for fork";
   bus->Pause();
