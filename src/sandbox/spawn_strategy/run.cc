@@ -15,6 +15,7 @@
 #include "base/fd_map.h"
 #include "sandbox/launcher.h"
 #include "sandbox/spawn_strategy/spawn_launcher_delegate.h"
+#include "sandbox/spawn_strategy/supervisor_communication.h"
 
 namespace zypak::sandbox::spawn_strategy {
 
@@ -48,8 +49,8 @@ std::optional<FdMap> FindAllFds() {
       Debug() << "Ignoring /proc/self/fd/" << dp->d_name << ": " << ex.what();
     }
 
-    // Do nothing if the FD was invalid or is our dirfd.
-    if (fd != -1 && fd != dirfd(fd_dir.get())) {
+    // Do nothing if the FD was invalid or one we don't want to forward.
+    if (fd != -1 && fd != dirfd(fd_dir.get()) && fd != kZypakSupervisorFd) {
       fds.push_back(fd);
     }
   }
