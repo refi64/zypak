@@ -82,7 +82,7 @@ void MimicLauncherDelegate::ExecZygoteChild(std::vector<std::string> command) {
   }
   c_argv.push_back(nullptr);
 
-  Debug() << "run as " << getpid() << ": " << Join(command.begin(), command.end());
+  Debug() << "Run as " << getpid() << ": " << Join(command.begin(), command.end());
 
   execvp(c_argv[0], const_cast<char* const*>(c_argv.data()));
   Errno() << "Failed to exec child process " << Join(command.begin(), command.end());

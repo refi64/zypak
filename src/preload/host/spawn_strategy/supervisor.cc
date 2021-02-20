@@ -68,7 +68,7 @@ Supervisor::Result Supervisor::GetExitStatus(pid_t stub_pid, int* status) {
     auto stub_pids_data = stub_pids_data_.Acquire(GuardReleaseNotify::kAll);
     data = FindStubPidData(StubPid(stub_pid), *stub_pids_data);
     if (data == nullptr) {
-      Debug() << "Could not find stub pid data, assuming dead for " << stub_pid;
+      Debug() << "Could not find stub pid data for " << stub_pid;
       return Result::kNotFound;
     }
 
