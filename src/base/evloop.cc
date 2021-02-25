@@ -92,28 +92,21 @@ void EvLoop::TriggerSourceRef::Trigger() {
 }
 
 std::optional<EvLoop::SourceRef> EvLoop::AddTask(EvLoop::EventHandler handler) {
-  ZYPAK_ASSERT(handler, << "Missing handler for task");
-
-  sd_event_source* source = nullptr;
-  if (int err = sd_event_add_defer(event_.get(), &source, &GenericHandler<EventHandler>, nullptr);
-      err < 0) {
-    Errno(-err) << "Failed to add task";
+  auto source = AddTaskNoNotify(std::move(handler));
+  if (!source) {
     return {};
   }
-
-  Debug() << "Added task source " << source;
-  SourceRef source_ref = SourceSetup(source, std::move(handler));
 
   // Notify any waiters.
   if (eventfd_write(notify_defer_fd_.get(), 1) == -1) {
     Errno() << "WARNING: Failed to notify defer fd";
   }
 
-  return source_ref;
+  return source;
 }
 
 std::optional<EvLoop::TriggerSourceRef> EvLoop::AddTrigger(EvLoop::EventHandler handler) {
-  auto source = AddTask(handler);
+  auto source = AddTaskNoNotify(handler);
   if (!source) {
     return {};
   }
@@ -281,6 +274,20 @@ EvLoop::ExitStatus EvLoop::exit_status() const {
 void EvLoop::ClearNotifyDeferFd() {
   std::uint64_t value;
   ZYPAK_ASSERT_WITH_ERRNO(eventfd_read(notify_defer_fd_.get(), &value) != -1 || errno == EAGAIN);
+}
+
+std::optional<EvLoop::SourceRef> EvLoop::AddTaskNoNotify(EvLoop::EventHandler handler) {
+  ZYPAK_ASSERT(handler, << "Missing handler for task");
+
+  sd_event_source* source = nullptr;
+  if (int err = sd_event_add_defer(event_.get(), &source, &GenericHandler<EventHandler>, nullptr);
+      err < 0) {
+    Errno(-err) << "Failed to add task";
+    return {};
+  }
+
+  Debug() << "Added task source " << source;
+  return SourceSetup(source, std::move(handler));
 }
 
 template <typename Handler>

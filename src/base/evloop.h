@@ -202,6 +202,8 @@ class EvLoop {
 
   void ClearNotifyDeferFd();
 
+  std::optional<EvLoop::SourceRef> AddTaskNoNotify(EvLoop::EventHandler handler);
+
   template <typename Handler>
   SourceRef SourceSetup(sd_event_source* source, Handler handler);
 
