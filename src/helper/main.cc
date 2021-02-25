@@ -6,8 +6,6 @@
 // zypak-helper is called by zypak-sandbox and is responsible for setting up the file descriptors
 // and launching the target process.
 
-#include <fcntl.h>
-
 #include <filesystem>
 #include <set>
 #include <vector>
@@ -74,71 +72,6 @@ bool SanityCheckWidevinePath(std::string_view widevine_path) {
   if (!EndsWith(widevine_path, "WidevineCdm") && !EndsWith(widevine_path, "WidevineCdm/")) {
     Log() << "Rejecting potentially incorrect Widevine CDM path: " << widevine_path;
     return false;
-  }
-
-  return true;
-}
-
-bool TestFdIsReadable(int fd) {
-  char c;
-  if (read(fd, &c, 0) != -1) {
-    return true;
-  }
-
-  if (errno != EBADF) {
-    Errno() << "Unexpected error from read(" << fd << ") test";
-    // Assume readable.
-    return true;
-  }
-
-  return false;
-}
-
-bool TestFdIsWritable(int fd) {
-  char c = 0;
-  if (write(fd, &c, 0) != -1) {
-    return true;
-  }
-
-  if (errno != EBADF) {
-    Errno() << "Unexpected error from write(" << fd << ") test";
-    // Assume writable.
-    return true;
-  }
-
-  return false;
-}
-
-bool SanitizeStdio() {
-  // Implement a variant of http://crbug.com/376567 for security. This is usually accomplished by a
-  // wrapper script, which Zypak can't really use.
-
-  unique_fd proc_self_fd(open("/proc/self/fd", O_RDONLY));
-  if (proc_self_fd.invalid()) {
-    Errno() << "Failed to open /proc/self/fd";
-    return false;
-  }
-
-  for (int fd = 0; fd <= 2; fd++) {
-    std::string fd_str = std::to_string(fd);
-    int flags = fd == 0 ? O_RDONLY : O_WRONLY;
-
-    unique_fd new_fd(openat(proc_self_fd.get(), fd_str.c_str(), flags));
-    if (new_fd.invalid()) {
-      Errno() << "Failed to re-open fd " << fd;
-      return false;
-    }
-
-    if (dup2(new_fd.get(), fd) == -1) {
-      Errno() << "Failed to set adjusted fd " << fd;
-      return false;
-    }
-
-    bool still_unsafe = fd == 0 ? TestFdIsWritable(fd) : TestFdIsReadable(fd);
-    if (still_unsafe) {
-      Log() << "I/O sanitization on fd " << fd << " did not succeed!";
-      return false;
-    }
   }
 
   return true;
@@ -235,10 +168,6 @@ int main(int argc, char** argv) {
       if (!SanityCheckWidevinePath(*widevine_path)) {
         return 1;
       }
-    }
-
-    if (!SanitizeStdio()) {
-      return 1;
     }
   } else if (mode == "child") {
     if (!ApplyFdMapFromArgs(&it, args.end())) {
