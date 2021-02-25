@@ -2,11 +2,57 @@
 
 #include <nickle.h>
 
+#include "base/env.h"
 #include "base/socket.h"
 #include "base/str_util.h"
 #include "sandbox/launcher.h"
 
 namespace zypak::preload {
+
+bool SanityCheckSpawnCall(const dbus::FlatpakPortalProxy::SpawnCall& call,
+                          const std::vector<std::string>& exposed_paths) {
+  // XXX: Some duplication with preload's launcher.cc.
+
+  if (call.flags & ~(dbus::FlatpakPortalProxy::kSpawnFlags_EmitSpawnStarted |
+                     dbus::FlatpakPortalProxy::kSpawnFlags_ExposePids |
+                     dbus::FlatpakPortalProxy::kSpawnFlags_NoNetwork |
+                     dbus::FlatpakPortalProxy::kSpawnFlags_Sandbox |
+                     dbus::FlatpakPortalProxy::kSpawnFlags_WatchBus)) {
+    Log() << "Detected unexpected spawn flags: " << call.flags;
+    return false;
+  }
+
+  if (call.options.sandbox_flags &
+      ~dbus::FlatpakPortalProxy::SpawnOptions::kSandboxFlags_ShareGpu) {
+    Log() << "Detected unexpected sandbox flags: " << call.options.sandbox_flags;
+    return false;
+  }
+
+  if (!Env::Test(Env::kZypakSettingDisableSandbox) &&
+      !(call.flags & dbus::FlatpakPortalProxy::kSpawnFlags_Sandbox)) {
+    Log() << "Cannot run non-sandboxed process while full sandbox is enabled";
+    return false;
+  }
+
+  if (!exposed_paths.empty()) {
+    if (exposed_paths.size() > 1) {
+      Log() << "Too many exposed paths: " << exposed_paths.size();
+      return false;
+    }
+
+    if (auto path = Env::Get(Env::kZypakSettingExposeWidevinePath); path && !path->empty()) {
+      if (exposed_paths.front() != *path) {
+        Log() << "Unexpected path exposure: " << exposed_paths.front();
+        return false;
+      }
+    } else {
+      Log() << "Should not have any exposed paths";
+      return false;
+    }
+  }
+
+  return true;
+}
 
 bool FulfillSpawnRequest(dbus::FlatpakPortalProxy* portal, const unique_fd& fd,
                          dbus::FlatpakPortalProxy::SpawnReplyHandler handler) {
@@ -83,6 +129,7 @@ bool FulfillSpawnRequest(dbus::FlatpakPortalProxy* portal, const unique_fd& fd,
     return false;
   }
 
+  std::vector<std::string> exposed_paths;
   for (std::uint32_t i = 0; i < exposed_paths_size; i++) {
     std::string path;
     if (!reader.Read<nickle::codecs::String>(&path)) {
@@ -94,6 +141,8 @@ bool FulfillSpawnRequest(dbus::FlatpakPortalProxy* portal, const unique_fd& fd,
       Log() << "Failed to open path for exposing into sandbox: " << path;
       return false;
     }
+
+    exposed_paths.push_back(std::move(path));
   }
 
   std::uint32_t spawn_flags;
@@ -107,6 +156,8 @@ bool FulfillSpawnRequest(dbus::FlatpakPortalProxy* portal, const unique_fd& fd,
   spawn.flags = static_cast<dbus::FlatpakPortalProxy::SpawnFlags>(spawn_flags);
   spawn.options.sandbox_flags =
       static_cast<dbus::FlatpakPortalProxy::SpawnOptions::SandboxFlags>(sandbox_flags);
+
+  ZYPAK_ASSERT(SanityCheckSpawnCall(spawn, exposed_paths), << "Failed to sanity check spawn call");
 
   Log() << "Running: " << Join(spawn.argv.begin(), spawn.argv.end());
   portal->SpawnAsync(std::move(spawn), std::move(handler));
