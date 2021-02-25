@@ -12,11 +12,10 @@
 
 #include "base/singleton.h"
 #include "base/socket.h"
-#include "base/str_util.h"
 #include "base/unique_fd.h"
 #include "dbus/bus_readable_message.h"
 #include "dbus/flatpak_portal_proxy.h"
-#include "nickle.h"
+#include "preload/host/spawn_strategy/spawn_request.h"
 
 namespace zypak::preload {
 
@@ -213,13 +212,13 @@ void Supervisor::HandleSpawnRequest(EvLoop::SourceRef source) {
   // Include the null terminator.
   std::array<std::byte, kZypakSupervisorSpawnRequest.size() + 1> buffer;
   std::vector<unique_fd> fds;
-  pid_t pid;
+  pid_t stub_pid;
 
   Debug() << "Ready to read spawn request";
 
   Socket::ReadOptions options;
   options.fds = &fds;
-  options.pid = &pid;
+  options.pid = &stub_pid;
   if (ssize_t bytes_read = Socket::Read(request_fd_.get(), &buffer, options); bytes_read == -1) {
     Errno() << "Failed to read spawn request";
     return;
@@ -237,116 +236,19 @@ void Supervisor::HandleSpawnRequest(EvLoop::SourceRef source) {
     return;
   }
 
-  FulfillSpawnRequest(std::move(fds[0]), pid);
-  return;
-}
+  unique_fd communication_fd = std::move(fds[0]);
 
-void Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
-  constexpr std::string_view kSpawnDirectory = "/";
-
-  std::array<std::byte, kZypakSupervisorMaxMessageLength> target;
-  std::vector<unique_fd> fds;
-
-  Socket::ReadOptions options;
-  options.fds = &fds;
-  ssize_t len = Socket::Read(fd.get(), &target, options);
-  if (len <= 0) {
-    if (len == 0) {
-      Log() << "No data could be read from supervisor client";
-    } else {
-      Errno() << "Failed to read message from supervisor client";
-    }
-  }
-
-  nickle::buffers::ReadOnlyContainerBuffer buffer(target);
-  nickle::Reader reader(&buffer);
-
-  dbus::FlatpakPortalProxy::SpawnCall spawn;
-  spawn.cwd = kSpawnDirectory;
-
-  std::uint32_t argc;
-  if (!reader.Read<nickle::codecs::UInt32>(&argc)) {
-    Log() << "Failed to read command size";
+  if (!FulfillSpawnRequest(
+          &portal_, communication_fd,
+          std::bind(&Supervisor::HandleSpawnReply, this, stub_pid, std::placeholders::_1))) {
+    Log() << "Failed to fulfill spawn request";
     return;
   }
-
-  for (std::uint32_t i = 0; i < argc; i++) {
-    std::string item;
-    if (!reader.Read<nickle::codecs::String>(&item)) {
-      Log() << "Failed to read comment argument #" << i;
-      return;
-    }
-    spawn.argv.push_back(std::move(item));
-  }
-
-  FdMap fd_map;
-  spawn.fds = &fd_map;
-  for (std::uint32_t i = 0; i < fds.size(); i++) {
-    std::uint32_t target_fd;
-    if (!reader.Read<nickle::codecs::UInt32>(&target_fd)) {
-      Log() << "Failed to read target fd #" << i;
-      return;
-    }
-    fd_map.push_back(FdAssignment(std::move(fds[i]), target_fd));
-  }
-
-  std::uint32_t env_size;
-  if (!reader.Read<nickle::codecs::UInt32>(&env_size)) {
-    Log() << "Failed to read env size";
-    return;
-  }
-
-  for (std::uint32_t i = 0; i < env_size; i++) {
-    std::string var, value;
-    if (!reader.Read<nickle::codecs::String>(&var) ||
-        !reader.Read<nickle::codecs::String>(&value)) {
-      Log() << "Failed to read env pair #" << i;
-      return;
-    }
-    spawn.env[var] = value;
-  }
-
-  std::uint32_t exposed_paths_size;
-  if (!reader.Read<nickle::codecs::UInt32>(&exposed_paths_size)) {
-    Log() << "Failed to read exposed paths size";
-    return;
-  }
-
-  for (std::uint32_t i = 0; i < exposed_paths_size; i++) {
-    std::string path;
-    if (!reader.Read<nickle::codecs::String>(&path)) {
-      Log() << "Failed to read exposed path # " << i;
-      return;
-    }
-
-    if (!spawn.options.ExposePathRo(path)) {
-      Log() << "Failed to open path for exposing into sandbox: " << path;
-      return;
-    }
-  }
-
-  std::uint32_t spawn_flags;
-  std::uint32_t sandbox_flags;
-  if (!reader.Read<nickle::codecs::UInt32>(&spawn_flags) ||
-      !reader.Read<nickle::codecs::UInt32>(&sandbox_flags)) {
-    Log() << "Failed to read spawn and sandbox flags";
-    return;
-  }
-
-  spawn.flags = static_cast<dbus::FlatpakPortalProxy::SpawnFlags>(spawn_flags);
-  spawn.options.sandbox_flags =
-      static_cast<dbus::FlatpakPortalProxy::SpawnOptions::SandboxFlags>(sandbox_flags);
-
-  Log() << "Running: " << Join(spawn.argv.begin(), spawn.argv.end());
-
-  auto stub_pids_data = stub_pids_data_.Acquire(GuardReleaseNotify::kNone);
-  auto it = stub_pids_data->emplace(stub_pid, StubPidData{}).first;
-  it->second.notify_exit = std::move(fd);
 
   Debug() << "Starting as " << stub_pid;
-
-  portal_.SpawnAsync(std::move(spawn), std::bind(&Supervisor::HandleSpawnReply, this, stub_pid,
-                                                 std::placeholders::_1));
+  auto stub_pids_data = stub_pids_data_.Acquire(GuardReleaseNotify::kNone);
+  auto it = stub_pids_data->emplace(stub_pid, StubPidData{}).first;
+  it->second.notify_exit = std::move(communication_fd);
 }
 
 void Supervisor::HandleSpawnReply(pid_t stub_pid, dbus::FlatpakPortalProxy::SpawnReply reply) {

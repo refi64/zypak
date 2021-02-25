@@ -72,6 +72,7 @@ preload_host_spawn_strategy_SOURCES := \
 	initialize.cc \
 	no_close_host_fd.cc \
 	process_override.cc \
+	spawn_request.cc \
 	supervisor.cc \
 
 $(call build_shlib,preload_host_spawn_strategy)

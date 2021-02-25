@@ -12,12 +12,12 @@
 
 #include "base/base.h"
 #include "preload/declare_override.h"
-#include "preload/host/spawn_strategy/supervisor.h"
+#include "sandbox/spawn_strategy/supervisor_communication.h"
 
 bool zypak::preload::block_supervisor_fd_close = false;
 
 DECLARE_OVERRIDE_THROW(int, close, int fd) {
-  if (fd == zypak::preload::kZypakSupervisorFd && zypak::preload::block_supervisor_fd_close) {
+  if (fd == zypak::sandbox::kZypakSupervisorFd && zypak::preload::block_supervisor_fd_close) {
     return 0;
   }
 

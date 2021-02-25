@@ -32,14 +32,6 @@ ZYPAK_STRONG_TYPEDEF_DEFINE_HASH(zypak::preload::supervisor_internal::StubPid, p
 
 namespace zypak::preload {
 
-ATTR_NO_WARN_UNUSED constexpr int kZypakSupervisorFd = sandbox::kZypakSupervisorFd;
-ATTR_NO_WARN_UNUSED constexpr int kZypakSupervisorMaxMessageLength =
-    sandbox::kZypakSupervisorMaxMessageLength;
-ATTR_NO_WARN_UNUSED constexpr std::string_view kZypakSupervisorSpawnRequest =
-    sandbox::kZypakSupervisorSpawnRequest;
-ATTR_NO_WARN_UNUSED constexpr std::string_view kZypakSupervisorExitReply =
-    sandbox::kZypakSupervisorExitReply;
-
 class Supervisor {
  public:
   static Supervisor* Acquire();
@@ -75,7 +67,6 @@ class Supervisor {
   void HandleSpawnExited(dbus::FlatpakPortalProxy::SpawnExitedMessage message);
 
   void HandleSpawnRequest(EvLoop::SourceRef source);
-  void FulfillSpawnRequest(unique_fd fd, pid_t stub_pid);
   void HandleSpawnReply(pid_t stub_pid, dbus::FlatpakPortalProxy::SpawnReply reply);
 
   unique_fd request_fd_;
