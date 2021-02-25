@@ -59,15 +59,12 @@ bool SpawnLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
   }
 
   int spawn_flags = dbus::FlatpakPortalProxy::kSpawnFlags_ExposePids |
-                    dbus::FlatpakPortalProxy::kSpawnFlags_EmitSpawnStarted;
+                    dbus::FlatpakPortalProxy::kSpawnFlags_EmitSpawnStarted |
+                    dbus::FlatpakPortalProxy::kSpawnFlags_NoNetwork;
   int sandbox_flags = dbus::FlatpakPortalProxy::SpawnOptions::kNoSandboxFlags;
 
   if (flags & Launcher::kAllowGpu) {
     sandbox_flags |= dbus::FlatpakPortalProxy::SpawnOptions::kSandboxFlags_ShareGpu;
-  }
-
-  if (!(flags & Launcher::kAllowNetwork)) {
-    spawn_flags |= dbus::FlatpakPortalProxy::kSpawnFlags_NoNetwork;
   }
 
   if (flags & Launcher::kSandbox) {

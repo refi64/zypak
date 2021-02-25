@@ -19,12 +19,10 @@ bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
                                   Launcher::Flags flags) /*override*/ {
   std::vector<std::string> spawn_command;
   spawn_command.push_back("flatpak-spawn");
+  spawn_command.push_back("--no-network");
 
   if (flags & Launcher::kWatchBus) {
     spawn_command.push_back("--watch-bus");
-  }
-  if (!(flags & Launcher::kAllowNetwork)) {
-    spawn_command.push_back("--no-network");
   }
   if (!(flags & Launcher::kAllowGpu) && (flags & Launcher::kSandbox)) {
     spawn_command.push_back("--sandbox");

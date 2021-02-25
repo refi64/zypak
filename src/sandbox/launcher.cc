@@ -73,10 +73,6 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
     flags |= kAllowGpu;
   }
 
-  if (Env::Test(Env::kZypakSettingAllowNetwork)) {
-    flags |= kAllowNetwork;
-  }
-
   if (!Env::Test(Env::kZypakSettingDisableSandbox)) {
     flags |= kSandbox;
   }

@@ -19,9 +19,8 @@ class Launcher {
   // XXX: This needs better type safety.
   enum Flags {
     kAllowGpu = 1 << 0,
-    kAllowNetwork = 1 << 1,
-    kSandbox = 1 << 2,
-    kWatchBus = 1 << 3,
+    kSandbox = 1 << 1,
+    kWatchBus = 1 << 2,
   };
 
   // A holder for the zypak-helper process that will generate the command line from an FD map.
