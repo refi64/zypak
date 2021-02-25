@@ -228,15 +228,6 @@ EvLoop::WaitResult EvLoop::Wait() {
         ClearNotifyDeferFd();
       }
 
-      int pending = sd_event_wait(event_.get(), 0);
-      if (pending < 0) {
-        Errno(-pending) << "Failed to update event loop waiting state";
-        return WaitResult::kError;
-      } else if (pending == 0) {
-        Log() << "poll found events, but sd-event found none";
-        return WaitResult::kIdle;
-      }
-
       return WaitResult::kReady;
     }
 
@@ -249,6 +240,17 @@ EvLoop::WaitResult EvLoop::Wait() {
 }
 
 EvLoop::DispatchResult EvLoop::Dispatch() {
+  if (sd_event_get_state(event_.get()) != SD_EVENT_PENDING) {
+    int pending = sd_event_wait(event_.get(), 0);
+    if (pending < 0) {
+      Errno(-pending) << "Failed to update event loop waiting state";
+      return DispatchResult::kError;
+    } else if (pending == 0) {
+      Log() << "Wait found events, but sd-event found none";
+      return DispatchResult::kContinue;
+    }
+  }
+
   int result = sd_event_dispatch(event_.get());
   if (result < 0) {
     Errno(-result) << "Failed to run event loop iteration";
