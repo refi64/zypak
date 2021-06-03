@@ -16,7 +16,12 @@
 
 bool zypak::preload::block_supervisor_fd_close = false;
 
-DECLARE_OVERRIDE_THROW(int, close, int fd) {
+// Chrome 92 introduces its own close override:
+// https://chromium-review.googlesource.com/q/I918d79c343c0027ee1ce4353c7acbe7c0e79d1dd This will
+// mean that an override of "close" here will not take effect anymore. In order to work around it,
+// we can also override glibc's __close instead, which Chromium's close override calls into.
+
+DECLARE_OVERRIDE_THROW(int, __close, int fd) {
   if (fd == zypak::sandbox::kZypakSupervisorFd && zypak::preload::block_supervisor_fd_close) {
     return 0;
   }
@@ -24,3 +29,5 @@ DECLARE_OVERRIDE_THROW(int, close, int fd) {
   // Just use the syscall to avoid tons of latency from indirection.
   return syscall(__NR_close, fd);
 }
+
+DECLARE_OVERRIDE_THROW(int, close, int fd) { return __close_override_detail::__close(fd); }
