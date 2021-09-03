@@ -71,7 +71,7 @@ Supervisor::Result Supervisor::GetExitStatus(pid_t stub_pid, int* status) {
       return Result::kNotFound;
     }
 
-    if (data->exit_status == -1) {
+    if (!data->exit_status.has_value()) {
       Debug() << "Still running, try later for " << stub_pid;
       return Result::kTryLater;
     }
@@ -90,7 +90,7 @@ Supervisor::Result Supervisor::WaitForExitStatus(pid_t stub_pid, int* status) {
     auto stub_pids_data =
         stub_pids_data_.AcquireWhen([this, stub_pid, &data](auto* stub_pids_data) {
           data = FindStubPidData(StubPid(stub_pid), *stub_pids_data);
-          return data == nullptr || data->exit_status != -1;
+          return data == nullptr || data->exit_status.has_value();
         });
 
     if (data == nullptr) {
@@ -165,7 +165,8 @@ Supervisor::FindStubPidData(StubPid stub,
 void Supervisor::ReapProcess(StubPid stub, StubPidData* data, int* status) {
   Debug() << "Reaping " << stub.pid;
 
-  *status = data->exit_status;
+  ZYPAK_ASSERT(data->exit_status.has_value());
+  *status = data->exit_status.value();
 
   if (!Socket::Write(data->notify_exit.get(), kZypakSupervisorExitReply)) {
     Errno() << "Failed to let stub process " << stub.pid << " know of exit";

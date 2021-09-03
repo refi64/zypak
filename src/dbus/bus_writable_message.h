@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "base/base.h"
 #include "base/debug.h"
 #include "dbus/bus_message.h"

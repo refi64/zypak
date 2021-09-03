@@ -6,7 +6,7 @@ LIBSYSTEMD_LDLIBS := $(shell pkg-config --libs libsystemd)
 DBUS_CFLAGS := $(shell pkg-config --cflags dbus-1)
 DBUS_LDLIBS := $(shell pkg-config --libs dbus-1)
 
-CXX := clang++
+CXX := g++
 CXXFLAGS := \
 		-fstack-protector-all -fstack-clash-protection -Wall -Werror \
 		-std=c++17 -g -pthread \

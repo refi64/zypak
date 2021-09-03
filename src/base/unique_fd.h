@@ -34,7 +34,7 @@ class unique_fd {
   bool invalid() const { return fd_ == kInvalidFd; }
   int get() const { return fd_; }
 
-  __attribute__((warn_unused_result)) int release() {
+  [[nodiscard]] int release() {
     int tmp = fd_;
     fd_ = kInvalidFd;
     return tmp;

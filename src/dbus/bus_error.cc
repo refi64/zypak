@@ -36,8 +36,6 @@ std::string_view Error::message() const {
   return error_.message;
 }
 
-}  // namespace zypak::dbus
-
 std::ostream& operator<<(std::ostream& os, const zypak::dbus::Error& error) {
   if (error) {
     os << "[" << error.name() << "] " << error.message();
@@ -47,3 +45,5 @@ std::ostream& operator<<(std::ostream& os, const zypak::dbus::Error& error) {
 
   return os;
 }
+
+}  // namespace zypak::dbus

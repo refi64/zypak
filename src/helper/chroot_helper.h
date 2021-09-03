@@ -14,8 +14,8 @@ namespace zypak {
 
 namespace {
 
-ATTR_NO_WARN_UNUSED constexpr std::string_view kSandboxHelperFdVar = "SBX_D";
-ATTR_NO_WARN_UNUSED constexpr std::string_view kSandboxHelperPidVar = "SBX_HELPER_PID";
+ATTR_NO_WARN_UNUSED inline constexpr std::string_view kSandboxHelperFdVar = "SBX_D";
+ATTR_NO_WARN_UNUSED inline constexpr std::string_view kSandboxHelperPidVar = "SBX_HELPER_PID";
 
 }  // namespace
 

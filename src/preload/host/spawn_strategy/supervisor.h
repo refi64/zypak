@@ -50,7 +50,7 @@ class Supervisor {
   struct StubPidData {
     supervisor_internal::ExternalPid external = -1;
     supervisor_internal::InternalPid internal = -1;
-    std::uint32_t exit_status = -1;
+    std::optional<std::uint32_t> exit_status;
     unique_fd notify_exit;
   };
 

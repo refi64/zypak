@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "base/base.h"
 #include "base/debug.h"
 #include "dbus/bus_message.h"
@@ -113,6 +115,6 @@ class Signal : public ReadableMessage {
   bool Test(std::string_view iface, std::string_view signal) const;
 };
 
-}  // namespace zypak::dbus
-
 std::ostream& operator<<(std::ostream& os, const zypak::dbus::InvocationError& error);
+
+}  // namespace zypak::dbus

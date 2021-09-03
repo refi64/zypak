@@ -13,7 +13,6 @@ using namespace std::literals::string_literals;
 using namespace std::literals::string_view_literals;
 
 #define ATTR_NO_WARN_UNUSED __attribute__((unused))
-#define ATTR_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 
 // Inspired by the macro in base/posix/eintr_wrapper.h
 #define HANDLE_EINTR(expr)                                                                   \

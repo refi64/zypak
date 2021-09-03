@@ -123,11 +123,11 @@ std::optional<pid_t> HandleFork(nickle::Reader* reader, const unique_fd& sandbox
   if (!reader->Read<nickle::codecs::Int>(&desired_fd_count)) {
     Log() << "Failed to read fd count";
     return {};
-  } else if (desired_fd_count != fds.size()) {
-    Log() << "Given " << fds.size() << " fds, but pickle wants " << desired_fd_count;
-    return {};
   } else if (desired_fd_count < 1) {
     Log() << "Too few FDs " << fds.size();
+    return {};
+  } else if (static_cast<size_t>(desired_fd_count) != fds.size()) {
+    Log() << "Given " << fds.size() << " fds, but pickle wants " << desired_fd_count;
     return {};
   }
 

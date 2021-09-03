@@ -84,7 +84,7 @@ ssize_t Socket::Read(int fd, std::byte* buffer, size_t size, ReadOptions options
           size_t nfds = GetCMsgSize(cmsg) / sizeof(int);
           options.fds->reserve(nfds);
           int* cmsg_fds = reinterpret_cast<int*>(CMSG_DATA(cmsg));
-          for (int i = 0; i < nfds; i++) {
+          for (size_t i = 0; i < nfds; i++) {
             options.fds->emplace_back(cmsg_fds[i]);
           }
         } else if (cmsg->cmsg_type == SCM_CREDENTIALS) {
@@ -149,7 +149,8 @@ bool Socket::Write(int fd, const std::byte* buffer, size_t size, WriteOptions op
     std::copy(options.fds->begin(), options.fds->end(), it);
   }
 
-  return HANDLE_EINTR(sendmsg(fd, &msg, MSG_NOSIGNAL)) == size;
+  ssize_t sent = HANDLE_EINTR(sendmsg(fd, &msg, MSG_NOSIGNAL));
+  return sent != -1 ? static_cast<size_t>(sent) == size : false;
 }
 
 // static

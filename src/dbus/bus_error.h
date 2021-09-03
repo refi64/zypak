@@ -32,6 +32,6 @@ class Error {
   DBusError error_;
 };
 
-}  // namespace zypak::dbus
-
 std::ostream& operator<<(std::ostream& os, const zypak::dbus::Error& error);
+
+}  // namespace zypak::dbus

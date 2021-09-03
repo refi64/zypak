@@ -30,9 +30,9 @@ bool Signal::Test(std::string_view iface, std::string_view signal) const {
   return dbus_message_is_signal(message(), iface.data(), signal.data());
 }
 
-}  // namespace zypak::dbus
-
 std::ostream& operator<<(std::ostream& os, const zypak::dbus::InvocationError& error) {
   os << error.name().value_or("<unknown>") << ": " << error.message().value_or("<unknown>");
   return os;
 }
+
+}  // namespace zypak::dbus
