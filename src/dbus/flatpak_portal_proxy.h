@@ -70,7 +70,7 @@ class FlatpakPortalProxy {
 
     std::vector<unique_fd> sandbox_expose_ro;
 
-    bool ExposePathRo(std::string_view path);
+    void ExposePathRo(std::string_view path);
   };
 
   FlatpakPortalProxy(Bus* bus = nullptr) : bus_(bus) {}

@@ -38,10 +38,7 @@ bool SpawnLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
   }
 
   for (const auto& path : exposed_paths) {
-    if (!spawn.options.ExposePathRo(path)) {
-      Log() << "Failed to open path for exposing into sandbox: " << path;
-      return false;
-    }
+    spawn.options.ExposePathRo(path);
   }
 
   spawn.flags = static_cast<dbus::FlatpakPortalProxy::SpawnFlags>(

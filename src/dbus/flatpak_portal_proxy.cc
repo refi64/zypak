@@ -13,15 +13,14 @@
 
 namespace zypak::dbus {
 
-bool FlatpakPortalProxy::SpawnOptions::ExposePathRo(std::string_view path) {
+void FlatpakPortalProxy::SpawnOptions::ExposePathRo(std::string_view path) {
   unique_fd fd(HANDLE_EINTR(open(path.data(), O_PATH | O_NOFOLLOW)));
   if (fd.invalid()) {
     Errno() << "Failed to expose '" << path << "' into sandbox";
-    return false;
+    return;
   }
 
   sandbox_expose_ro.push_back(std::move(fd));
-  return true;
 }
 
 void FlatpakPortalProxy::AttachToBus(Bus* bus) {
