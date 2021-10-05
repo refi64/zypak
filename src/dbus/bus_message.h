@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/unique_fd.h"
 #include "dbus/internal/bus_types.h"
 
@@ -23,19 +24,18 @@ using BusTypeTraits = internal::BusTypeTraits<Code>;
 // A reference to a particular interface, object, and service.
 class FloatingRef {
  public:
-  constexpr FloatingRef(std::string_view service, std::string_view object,
-                        std::string_view interface)
+  constexpr FloatingRef(cstring_view service, cstring_view object, cstring_view interface)
       : service_(std::move(service)), object_(std::move(object)), interface_(std::move(interface)) {
   }
 
-  std::string_view service() const { return service_; }
-  std::string_view object() const { return object_; }
-  std::string_view interface() const { return interface_; }
+  cstring_view service() const { return service_; }
+  cstring_view object() const { return object_; }
+  cstring_view interface() const { return interface_; }
 
  private:
-  std::string_view service_;
-  std::string_view object_;
-  std::string_view interface_;
+  cstring_view service_;
+  cstring_view object_;
+  cstring_view interface_;
 };
 
 // A D-Bus message.

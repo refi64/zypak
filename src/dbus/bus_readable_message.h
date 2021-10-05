@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/debug.h"
 #include "dbus/bus_message.h"
 
@@ -83,8 +84,8 @@ class InvocationError {
       : name_(std::move(name)), message_(std::move(message)) {}
 
   // Returns a string_view so value_or doesn't make extraneous copies.
-  std::optional<std::string_view> name() const { return name_; }
-  std::optional<std::string_view> message() const { return message_; }
+  std::optional<cstring_view> name() const { return name_; }
+  std::optional<cstring_view> message() const { return message_; }
 
  private:
   std::optional<std::string> name_;
@@ -112,7 +113,7 @@ class Signal : public ReadableMessage {
 
   // Returns whether or not the current signal is the same as the given name and was emitted by the
   // given interface.
-  bool Test(std::string_view iface, std::string_view signal) const;
+  bool Test(cstring_view iface, cstring_view signal) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const zypak::dbus::InvocationError& error);

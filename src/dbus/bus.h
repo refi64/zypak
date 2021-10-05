@@ -12,6 +12,7 @@
 #include <variant>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/evloop.h"
 #include "dbus/bus_message.h"
 #include "dbus/bus_readable_message.h"
@@ -76,7 +77,7 @@ class Bus {
   // Gets a property of the given interface asynchronously, calling the given handler once the
   // property is available, or an error has occurred.
   template <TypeCode Code>
-  void GetPropertyAsync(FloatingRef ref, std::string_view property, PropertyHandler<Code> handler) {
+  void GetPropertyAsync(FloatingRef ref, cstring_view property, PropertyHandler<Code> handler) {
     CallAsync(BuildGetPropertyCall(ref, property),
               [this, handler = std::move(handler), prop = std::string(property)](Reply reply) {
                 handler(ParseGetPropertyResult<Code>(reply, prop));
@@ -85,7 +86,7 @@ class Bus {
 
   // Gets a property of theg given interface blocking, returning the result or error.
   template <TypeCode Code>
-  PropertyResult<Code> GetPropertyBlocking(FloatingRef ref, std::string_view property) {
+  PropertyResult<Code> GetPropertyBlocking(FloatingRef ref, cstring_view property) {
     Reply reply = CallBlocking(BuildGetPropertyCall(std::move(ref), property));
     return ParseGetPropertyResult<Code>(std::move(reply), property);
   }
@@ -94,10 +95,10 @@ class Bus {
   bool IsInitialized() const;
   bool Initialize();
 
-  MethodCall BuildGetPropertyCall(FloatingRef ref, std::string_view property);
+  MethodCall BuildGetPropertyCall(FloatingRef ref, cstring_view property);
 
   template <TypeCode Code>
-  PropertyResult<Code> ParseGetPropertyResult(Reply reply, std::string_view property) {
+  PropertyResult<Code> ParseGetPropertyResult(Reply reply, cstring_view property) {
     if (auto error = reply.ReadError()) {
       return std::move(*error);
     }

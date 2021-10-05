@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/debug.h"
 #include "dbus/bus_message.h"
 
@@ -44,7 +45,7 @@ class MessageWriter {
   // Identical to the above, but specialized for arrays. Takes a string representing the type of the
   // array's element.
   template <TypeCode Code>
-  MessageWriter EnterContainer(std::string_view element) {
+  MessageWriter EnterContainer(cstring_view element) {
     static_assert(Code == TypeCode::kArray || Code == TypeCode::kVariant);
     return MessageWriter(&iter_, Code, element);
   }
@@ -66,7 +67,7 @@ class MessageWriter {
     dbus_message_iter_init_append(message, &iter_);
   }
 
-  MessageWriter(DBusMessageIter* parent, TypeCode code, std::optional<std::string_view> signature)
+  MessageWriter(DBusMessageIter* parent, TypeCode code, std::optional<cstring_view> signature)
       : parent_(parent) {
     ZYPAK_ASSERT(dbus_message_iter_open_container(parent, static_cast<int>(code),
                                                   signature ? signature->data() : nullptr, &iter_));
@@ -90,7 +91,7 @@ class WritableMessage : public Message {
 // A D-Bus method call message.
 class MethodCall : public WritableMessage {
  public:
-  MethodCall(FloatingRef ref, std::string_view method);
+  MethodCall(FloatingRef ref, cstring_view method);
 };
 
 }  // namespace zypak::dbus

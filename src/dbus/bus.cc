@@ -108,9 +108,9 @@ bool Bus::Initialize() {
   return true;
 }
 
-MethodCall Bus::BuildGetPropertyCall(FloatingRef ref, std::string_view property) {
-  constexpr std::string_view kPropertiesIface = "org.freedesktop.DBus.Properties";
-  constexpr std::string_view kGetMethod = "Get";
+MethodCall Bus::BuildGetPropertyCall(FloatingRef ref, cstring_view property) {
+  constexpr cstring_view kPropertiesIface = "org.freedesktop.DBus.Properties";
+  constexpr cstring_view kGetMethod = "Get";
 
   MethodCall call(FloatingRef(ref.service(), ref.object(), kPropertiesIface), kGetMethod);
   MessageWriter writer = call.OpenWriter();

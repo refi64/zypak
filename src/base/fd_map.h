@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/cstring_view.h"
 #include "base/unique_fd.h"
 
 namespace zypak {
@@ -25,7 +26,7 @@ class FdAssignment {
   std::optional<unique_fd> Assign();
 
   std::string Serialize() const;
-  static std::optional<FdAssignment> Deserialize(std::string_view data);
+  static std::optional<FdAssignment> Deserialize(cstring_view data);
 
  private:
   unique_fd fd_;

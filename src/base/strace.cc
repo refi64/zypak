@@ -50,7 +50,7 @@ bool Strace::ShouldTraceChild(std::string_view child_type) {
 }
 
 // static
-std::optional<std::string_view> Strace::GetSyscallFilter() {
+std::optional<cstring_view> Strace::GetSyscallFilter() {
   return Env::Get(Env::kZypakSettingStraceFilter);
 }
 

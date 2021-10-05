@@ -26,12 +26,12 @@ Error& Error::operator=(Error&& other) {
   return *this;
 }
 
-std::string_view Error::name() const {
+cstring_view Error::name() const {
   ZYPAK_ASSERT(*this);
   return error_.name;
 }
 
-std::string_view Error::message() const {
+cstring_view Error::message() const {
   ZYPAK_ASSERT(*this);
   return error_.message;
 }

@@ -30,7 +30,7 @@ std::string FdAssignment::Serialize() const {
 }
 
 // static
-std::optional<FdAssignment> FdAssignment::Deserialize(std::string_view data) {
+std::optional<FdAssignment> FdAssignment::Deserialize(cstring_view data) {
   std::string::size_type eq = data.find('=');
   if (eq == std::string::npos) {
     return {};
@@ -38,7 +38,7 @@ std::optional<FdAssignment> FdAssignment::Deserialize(std::string_view data) {
 
   int target;
   int fd;
-  if (std::sscanf(data.data(), "%d=%d", &target, &fd) < 2) {
+  if (std::sscanf(data.c_str(), "%d=%d", &target, &fd) < 2) {
     return {};
   }
 

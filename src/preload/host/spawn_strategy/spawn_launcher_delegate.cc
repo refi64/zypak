@@ -21,7 +21,7 @@ bool SpawnLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
                                   Launcher::Flags flags) /*override*/ {
   ZYPAK_ASSERT(!was_called_);
 
-  constexpr std::string_view kSpawnDirectory = "/";
+  constexpr cstring_view kSpawnDirectory = "/";
 
   dbus::FlatpakPortalProxy::SpawnCall spawn;
   spawn.cwd = kSpawnDirectory;

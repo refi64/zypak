@@ -26,8 +26,8 @@ std::optional<InvocationError> Reply::ReadError() {
   return InvocationError(name_opt, message_opt);
 }
 
-bool Signal::Test(std::string_view iface, std::string_view signal) const {
-  return dbus_message_is_signal(message(), iface.data(), signal.data());
+bool Signal::Test(cstring_view iface, cstring_view signal) const {
+  return dbus_message_is_signal(message(), iface.c_str(), signal.c_str());
 }
 
 std::ostream& operator<<(std::ostream& os, const zypak::dbus::InvocationError& error) {

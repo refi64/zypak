@@ -6,38 +6,38 @@
 #pragma once
 
 #include <optional>
-#include <string_view>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 
 namespace zypak {
 
 class Env {
  public:
   // Get the requested environment variable, returning an empty optional on failure.
-  static std::optional<std::string_view> Get(std::string_view name);
+  static std::optional<cstring_view> Get(cstring_view name);
   // Get the requested environment variable, aborting on failure.
-  static std::string_view Require(std::string_view name);
+  static cstring_view Require(cstring_view name);
   // Sets the given environment variable.
-  static void Set(std::string_view name, std::string_view value, bool overwrite = true);
+  static void Set(cstring_view name, cstring_view value, bool overwrite = true);
   // Clears the given environment variable.
-  static void Clear(std::string_view name);
+  static void Clear(cstring_view name);
   // Tests if the variable is set to a truthy value (i.e. not empty, 0, or false).
-  static bool Test(std::string_view name);
+  static bool Test(cstring_view name);
 
-  static constexpr std::string_view kZypakBin = "ZYPAK_BIN";
-  static constexpr std::string_view kZypakLib = "ZYPAK_LIB";
-  static constexpr std::string_view kZypakZygoteStrategySpawn = "ZYPAK_ZYGOTE_STRATEGY_SPAWN";
+  static constexpr cstring_view kZypakBin = "ZYPAK_BIN";
+  static constexpr cstring_view kZypakLib = "ZYPAK_LIB";
+  static constexpr cstring_view kZypakZygoteStrategySpawn = "ZYPAK_ZYGOTE_STRATEGY_SPAWN";
 
-  static constexpr std::string_view kZypakSettingEnableDebug = "ZYPAK_DEBUG";
-  static constexpr std::string_view kZypakSettingStrace = "ZYPAK_STRACE";
-  static constexpr std::string_view kZypakSettingStraceFilter = "ZYPAK_STRACE_FILTER";
-  static constexpr std::string_view kZypakSettingStraceNoLineLimit = "ZYPAK_STRACE_NO_LINE_LIMIT";
-  static constexpr std::string_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
-  static constexpr std::string_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
-  static constexpr std::string_view kZypakSettingSandboxFilename = "ZYPAK_SANDBOX_FILENAME";
-  static constexpr std::string_view kZypakSettingExposeWidevinePath = "ZYPAK_EXPOSE_WIDEVINE_PATH";
-  static constexpr std::string_view kZypakSettingLdPreload = "ZYPAK_LD_PRELOAD";
+  static constexpr cstring_view kZypakSettingEnableDebug = "ZYPAK_DEBUG";
+  static constexpr cstring_view kZypakSettingStrace = "ZYPAK_STRACE";
+  static constexpr cstring_view kZypakSettingStraceFilter = "ZYPAK_STRACE_FILTER";
+  static constexpr cstring_view kZypakSettingStraceNoLineLimit = "ZYPAK_STRACE_NO_LINE_LIMIT";
+  static constexpr cstring_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
+  static constexpr cstring_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
+  static constexpr cstring_view kZypakSettingSandboxFilename = "ZYPAK_SANDBOX_FILENAME";
+  static constexpr cstring_view kZypakSettingExposeWidevinePath = "ZYPAK_EXPOSE_WIDEVINE_PATH";
+  static constexpr cstring_view kZypakSettingLdPreload = "ZYPAK_LD_PRELOAD";
 };
 
 }  // namespace zypak

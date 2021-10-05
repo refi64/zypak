@@ -9,6 +9,7 @@
 #include <type_traits>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/unique_fd.h"
 
 namespace zypak::dbus::internal {
@@ -69,10 +70,9 @@ struct BusTypeTraitsConvertibleFixed : BusTypeTraitsFixedBase<Type, Type> {
 };
 
 struct BusTypeTraitsConvertibleString
-    : BusTypeTraitsConvertibleBase<TypeCodeKind::kString, const char*, std::string,
-                                   std::string_view> {
+    : BusTypeTraitsConvertibleBase<TypeCodeKind::kString, const char*, std::string, cstring_view> {
   static std::string ConvertToExternal(const char* value) { return value; }
-  static const char* ConvertToInternal(std::string_view value) { return value.data(); }
+  static const char* ConvertToInternal(cstring_view value) { return value.c_str(); }
 };
 
 struct BusTypeTraitsHandleConvert : BusTypeTraitsFixedBase<int, unique_fd> {

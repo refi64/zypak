@@ -26,7 +26,7 @@ using namespace zypak;
 
 namespace fs = std::filesystem;
 
-using ArgsView = std::vector<std::string_view>;
+using ArgsView = std::vector<cstring_view>;
 
 void DetermineZygoteStrategy() {
   Debug() << "Determining sandbox strategy...";
@@ -68,7 +68,7 @@ void DetermineZygoteStrategy() {
   Env::Set(Env::kZypakZygoteStrategySpawn, "1");
 }
 
-bool SanityCheckWidevinePath(std::string_view widevine_path) {
+bool SanityCheckWidevinePath(cstring_view widevine_path) {
   if (!EndsWith(widevine_path, "WidevineCdm") && !EndsWith(widevine_path, "WidevineCdm/")) {
     Log() << "Rejecting potentially incorrect Widevine CDM path: " << widevine_path;
     return false;
@@ -119,7 +119,7 @@ bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
 std::string GetPreload(std::string_view mode, std::string_view libdir) {
   std::vector<std::string> preload_names;
 
-  preload_names.push_back(mode.data());
+  preload_names.emplace_back(mode);
   if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
     preload_names.push_back(std::string(mode) + "-spawn-strategy");
   } else if (mode == "child") {
@@ -135,8 +135,8 @@ std::string GetPreload(std::string_view mode, std::string_view libdir) {
     preload_libs.push_back(std::string(*preload));
   }
 
-  for (std::string_view name : preload_names) {
-    fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name.data() + ".so");
+  for (const std::string& name : preload_names) {
+    fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name + ".so");
     preload_libs.push_back(path.string());
   }
 
@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  std::string_view mode = *it++;
+  cstring_view mode = *it++;
 
   if (mode == "host-latest" || mode == "exec-latest") {
     bool wrap_with_zypak = mode == "host-latest";
@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
 
     new_command.push_back("-E");
     // XXX: Ugly hack to avoid copying when *not* using strace.
-    new_command.push_back((new std::string("LD_PRELOAD="s + preload))->data());
+    new_command.push_back((new std::string("LD_PRELOAD="s + preload))->c_str());
 
     if (auto filter = Strace::GetSyscallFilter()) {
       new_command.push_back("-e");
@@ -230,7 +230,7 @@ int main(int argc, char** argv) {
   c_argv.reserve(command.size() + 1);
 
   for (const auto& arg : command) {
-    c_argv.push_back(arg.data());
+    c_argv.push_back(arg.c_str());
   }
 
   c_argv.push_back(nullptr);

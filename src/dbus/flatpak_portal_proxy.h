@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/enum_util.h"
 #include "base/fd_map.h"
 #include "dbus/bus.h"
@@ -70,7 +71,7 @@ class FlatpakPortalProxy {
 
     std::vector<unique_fd> sandbox_expose_ro;
 
-    void ExposePathRo(std::string_view path);
+    void ExposePathRo(cstring_view path);
   };
 
   FlatpakPortalProxy(Bus* bus = nullptr) : bus_(bus) {}
@@ -87,7 +88,7 @@ class FlatpakPortalProxy {
   struct SpawnCall {
     SpawnCall() {}
 
-    std::string_view cwd;
+    cstring_view cwd;
     std::vector<std::string> argv;
     const FdMap* fds = nullptr;
     std::unordered_map<std::string, std::string> env;
@@ -114,7 +115,7 @@ class FlatpakPortalProxy {
   // static so it can be used easily in a callback without having to capture `this`
   static std::optional<SpawnReply> GetSpawnReply(Reply reply);
 
-  std::optional<std::uint32_t> GetUint32PropertyBlocking(std::string_view name);
+  std::optional<std::uint32_t> GetUint32PropertyBlocking(cstring_view name);
 
   Bus* bus_;
 };

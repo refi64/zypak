@@ -11,6 +11,8 @@
 
 // Pretend that chrome-sandbox exists and is a setuid binary.
 
+using namespace zypak;
+
 DECLARE_OVERRIDE(int, access, const char* path, int mode) {
   auto original = LoadOriginal();
 

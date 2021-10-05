@@ -14,6 +14,7 @@
 #include <systemd/sd-event.h>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/debug.h"
 
 namespace zypak {
@@ -337,7 +338,7 @@ int EvLoop::GenericHandler(sd_event_source* source, void* data, Args&&... args) 
 // static
 int EvLoop::HandleIoEvent(sd_event_source* source, int fd, std::uint32_t revents, void* data) {
   if (revents & (EPOLLHUP | EPOLLERR)) {
-    std::string_view reason = revents & EPOLLHUP ? "connection closed" : "unknown error";
+    cstring_view reason = revents & EPOLLHUP ? "connection closed" : "unknown error";
     Log() << "Dropping " << source << " (" << fd << ") because of " << reason;
     DisableSource(source);
     return -ECONNRESET;

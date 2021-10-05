@@ -8,14 +8,15 @@
 #include <string_view>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/unique_fd.h"
 
 namespace zypak {
 
 namespace {
 
-ATTR_NO_WARN_UNUSED inline constexpr std::string_view kSandboxHelperFdVar = "SBX_D";
-ATTR_NO_WARN_UNUSED inline constexpr std::string_view kSandboxHelperPidVar = "SBX_HELPER_PID";
+ATTR_NO_WARN_UNUSED inline constexpr cstring_view kSandboxHelperFdVar = "SBX_D";
+ATTR_NO_WARN_UNUSED inline constexpr cstring_view kSandboxHelperPidVar = "SBX_HELPER_PID";
 
 }  // namespace
 

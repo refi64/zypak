@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 
 namespace zypak {
 
@@ -18,7 +19,7 @@ class Strace {
   static bool ShouldTraceChild(std::string_view child_type);
   // Returns a filter to pass to 'strace -e' if given by the user; if none is given, returns an
   // empty optional.
-  static std::optional<std::string_view> GetSyscallFilter();
+  static std::optional<cstring_view> GetSyscallFilter();
   static bool HasLineLimit();
 };
 

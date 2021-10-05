@@ -6,8 +6,8 @@
 
 namespace zypak::dbus {
 
-MethodCall::MethodCall(FloatingRef ref, std::string_view method)
-    : WritableMessage(dbus_message_new_method_call(ref.service().data(), ref.object().data(),
-                                                   ref.interface().data(), method.data())) {}
+MethodCall::MethodCall(FloatingRef ref, cstring_view method)
+    : WritableMessage(dbus_message_new_method_call(ref.service().c_str(), ref.object().c_str(),
+                                                   ref.interface().c_str(), method.c_str())) {}
 
 }  // namespace zypak::dbus

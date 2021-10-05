@@ -21,17 +21,17 @@ namespace {
 
 using namespace zypak;
 
-bool IsCurrentExe(std::string_view exec) {
+bool IsCurrentExe(cstring_view exec) {
   struct stat self_st, exec_st;
-  return stat("/proc/self/exe", &self_st) != -1 && stat(exec.data(), &exec_st) != -1 &&
+  return stat("/proc/self/exe", &self_st) != -1 && stat(exec.c_str(), &exec_st) != -1 &&
          self_st.st_ino == exec_st.st_ino;
 }
 
 bool HasTypeArg(char* const* argv) {
-  constexpr std::string_view kTypeArgPrefix = "--type=";
+  constexpr cstring_view kTypeArgPrefix = "--type=";
 
   for (; *argv != nullptr; argv++) {
-    if (strncmp(*argv, kTypeArgPrefix.data(), kTypeArgPrefix.size()) == 0) {
+    if (strncmp(*argv, kTypeArgPrefix.c_str(), kTypeArgPrefix.size()) == 0) {
       return true;
     }
   }

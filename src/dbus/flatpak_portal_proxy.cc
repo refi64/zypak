@@ -13,8 +13,8 @@
 
 namespace zypak::dbus {
 
-void FlatpakPortalProxy::SpawnOptions::ExposePathRo(std::string_view path) {
-  unique_fd fd(HANDLE_EINTR(open(path.data(), O_PATH | O_NOFOLLOW)));
+void FlatpakPortalProxy::SpawnOptions::ExposePathRo(cstring_view path) {
+  unique_fd fd(HANDLE_EINTR(open(path.c_str(), O_PATH | O_NOFOLLOW)));
   if (fd.invalid()) {
     Errno() << "Failed to expose '" << path << "' into sandbox";
     return;
@@ -68,7 +68,7 @@ std::optional<InvocationError> FlatpakPortalProxy::SpawnSignalBlocking(std::uint
 }
 
 void FlatpakPortalProxy::SubscribeToSpawnStarted(SpawnStartedHandler handler) {
-  std::string interface = kFlatpakPortalRef.interface().data();
+  std::string interface(kFlatpakPortalRef.interface());
   bus_->SignalConnect(std::move(interface), "SpawnStarted", [handler](Signal signal) {
     MessageReader reader = signal.OpenReader();
     SpawnStartedMessage message;
@@ -82,7 +82,7 @@ void FlatpakPortalProxy::SubscribeToSpawnStarted(SpawnStartedHandler handler) {
 }
 
 void FlatpakPortalProxy::SubscribeToSpawnExited(SpawnExitedHandler handler) {
-  std::string interface = kFlatpakPortalRef.interface().data();
+  std::string interface(kFlatpakPortalRef.interface());
   bus_->SignalConnect(std::move(interface), "SpawnExited", [handler](Signal signal) {
     MessageReader reader = signal.OpenReader();
     SpawnExitedMessage message;
@@ -100,14 +100,14 @@ MethodCall FlatpakPortalProxy::BuildSpawnMethodCall(SpawnCall spawn) {
   MessageWriter writer = call.OpenWriter();
 
   ZYPAK_ASSERT(!spawn.cwd.empty());
-  writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(spawn.cwd.data()),
+  writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(spawn.cwd.c_str()),
                                           spawn.cwd.size() + 1);  // include null terminator
 
   {
     ZYPAK_ASSERT(!spawn.argv.empty());
     MessageWriter argv_writer = writer.EnterContainer<TypeCode::kArray>("ay");
     for (const std::string& arg : spawn.argv) {
-      argv_writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(arg.data()),
+      argv_writer.WriteFixedArray<TypeCode::kByte>(reinterpret_cast<const std::byte*>(arg.c_str()),
                                                    arg.size() + 1);  // include null terminator
     }
   }
@@ -135,8 +135,8 @@ MethodCall FlatpakPortalProxy::BuildSpawnMethodCall(SpawnCall spawn) {
   writer.Write<TypeCode::kUInt32>(static_cast<std::uint32_t>(spawn.flags));
 
   {
-    constexpr std::string_view kOptionSandboxFlags = "sandbox-flags";
-    constexpr std::string_view kOptionSandboxExposeFdRo = "sandbox-expose-fd-ro";
+    constexpr cstring_view kOptionSandboxFlags = "sandbox-flags";
+    constexpr cstring_view kOptionSandboxExposeFdRo = "sandbox-expose-fd-ro";
 
     MessageWriter options_writer = writer.EnterContainer<TypeCode::kArray>("{sv}");
 
@@ -181,7 +181,7 @@ std::optional<FlatpakPortalProxy::SpawnReply> FlatpakPortalProxy::GetSpawnReply(
   }
 }
 
-std::optional<std::uint32_t> FlatpakPortalProxy::GetUint32PropertyBlocking(std::string_view name) {
+std::optional<std::uint32_t> FlatpakPortalProxy::GetUint32PropertyBlocking(cstring_view name) {
   Bus::PropertyResult<TypeCode::kUInt32> reply =
       bus_->GetPropertyBlocking<TypeCode::kUInt32>(kFlatpakPortalRef, name);
 

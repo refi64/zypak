@@ -10,13 +10,14 @@
 #include <string_view>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 
 // Some helpers to assist with loading the original functions.
 namespace declare_override_detail {
 template <typename T>
-T LoadOriginal(T* func, std::string_view name) {
+T LoadOriginal(T* func, zypak::cstring_view name) {
   if (!*func) {
-    *func = reinterpret_cast<T>(dlsym(RTLD_NEXT, name.data()));
+    *func = reinterpret_cast<T>(dlsym(RTLD_NEXT, name.c_str()));
   }
 
   return *func;
@@ -32,9 +33,11 @@ T LoadOriginal(T* func, std::string_view name) {
       return declare_override_detail::LoadOriginal(&func##_override_detail::original, #func); \
     }                                                                                         \
     }                                                                                         \
-    extern "C" ret func(__VA_ARGS__) except;                                                  \
+    extern "C" ret func(__VA_ARGS__)                                                          \
+    except;                                                                                   \
   }                                                                                           \
-  extern "C" ret func##_override_detail::func(__VA_ARGS__) except
+  extern "C" ret func##_override_detail::func(__VA_ARGS__)                                    \
+  except
 
 #define DECLARE_OVERRIDE(...) DECLARE_OVERRIDE_BASE(noexcept, __VA_ARGS__)
 #define DECLARE_OVERRIDE_THROW(...) DECLARE_OVERRIDE_BASE(, __VA_ARGS__)

@@ -19,13 +19,13 @@
 
 namespace zypak {
 
-constexpr std::string_view kSandboxApiVar = "SBX_CHROME_API_PRV";
-constexpr std::string_view kSandboxApiValue = "1";
-constexpr std::string_view kSandboxPidNsVar = "SBX_PID_NS";
-constexpr std::string_view kSandboxNetNsVar = "SBX_NET_NS";
-constexpr std::string_view kSandboxNsEnabled = "1";
+constexpr cstring_view kSandboxApiVar = "SBX_CHROME_API_PRV";
+constexpr cstring_view kSandboxApiValue = "1";
+constexpr cstring_view kSandboxPidNsVar = "SBX_PID_NS";
+constexpr cstring_view kSandboxNetNsVar = "SBX_NET_NS";
+constexpr cstring_view kSandboxNsEnabled = "1";
 
-constexpr std::string_view kXdgConfigHomeVar = "XDG_CONFIG_HOME";
+constexpr cstring_view kXdgConfigHomeVar = "XDG_CONFIG_HOME";
 
 constexpr char kPreloadDelimiters[] = ": ";
 
@@ -118,7 +118,7 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
     env[kXdgConfigHomeVar] = Env::Require(kXdgConfigHomeVar);
   }
 
-  auto helper_path = std::filesystem::path(bindir.data()) / "zypak-helper";
+  auto helper_path = std::filesystem::path(bindir.ToOwned()) / "zypak-helper";
   Helper helper(helper_path.string(), child_type);
 
   return delegate_->Spawn(helper, std::move(command), fd_map, std::move(env),

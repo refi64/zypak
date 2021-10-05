@@ -12,8 +12,8 @@
 namespace zypak {
 
 // static
-std::optional<std::string_view> Env::Get(std::string_view name) {
-  if (auto env = getenv(name.data())) {
+std::optional<cstring_view> Env::Get(cstring_view name) {
+  if (auto env = getenv(name.c_str())) {
     return {env};
   } else {
     return {};
@@ -21,7 +21,7 @@ std::optional<std::string_view> Env::Get(std::string_view name) {
 }
 
 // static
-std::string_view Env::Require(std::string_view name) {
+cstring_view Env::Require(cstring_view name) {
   if (auto env = Get(name)) {
     return *env;
   } else {
@@ -31,15 +31,15 @@ std::string_view Env::Require(std::string_view name) {
 }
 
 // static
-void Env::Set(std::string_view name, std::string_view value, bool overwrite /*= true*/) {
-  ZYPAK_ASSERT(setenv(name.data(), value.data(), static_cast<int>(overwrite)) == 0);
+void Env::Set(cstring_view name, cstring_view value, bool overwrite /*= true*/) {
+  ZYPAK_ASSERT(setenv(name.c_str(), value.c_str(), static_cast<int>(overwrite)) == 0);
 }
 
 // static
-void Env::Clear(std::string_view name) { ZYPAK_ASSERT(unsetenv(name.data()) == 0); }
+void Env::Clear(cstring_view name) { ZYPAK_ASSERT(unsetenv(name.c_str()) == 0); }
 
 // static
-bool Env::Test(std::string_view name) {
+bool Env::Test(cstring_view name) {
   if (auto env = Get(name)) {
     return !env->empty() && *env != "0" && *env != "false";
   } else {

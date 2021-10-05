@@ -6,12 +6,13 @@
 #pragma once
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 
 namespace zypak::sandbox {
 
 ATTR_NO_WARN_UNUSED constexpr int kZypakSupervisorFd = 235;
 ATTR_NO_WARN_UNUSED constexpr int kZypakSupervisorMaxMessageLength = 16 * 1024;
-ATTR_NO_WARN_UNUSED constexpr std::string_view kZypakSupervisorSpawnRequest = "SPAWN";
-ATTR_NO_WARN_UNUSED constexpr std::string_view kZypakSupervisorExitReply = "EXIT";
+ATTR_NO_WARN_UNUSED constexpr cstring_view kZypakSupervisorSpawnRequest = "SPAWN";
+ATTR_NO_WARN_UNUSED constexpr cstring_view kZypakSupervisorExitReply = "EXIT";
 
 }  // namespace zypak::sandbox

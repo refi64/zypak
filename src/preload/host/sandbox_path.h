@@ -6,16 +6,19 @@
 #pragma once
 
 #include "base/base.h"
+#include "base/cstring_view.h"
+
+namespace zypak {
 
 // Keeps track of the known sandbox path.
 class SandboxPath {
  public:
-  std::string_view sandbox_path() const;
-  void set_sandbox_path(std::string_view path);
+  cstring_view sandbox_path() const;
+  void set_sandbox_path(cstring_view path);
 
   // If the given path the sandbox path, or if the sandbox path is unset, does the given path "look"
   // like a sandbox path?
-  bool LooksLikeSandboxPath(std::string_view path);
+  bool LooksLikeSandboxPath(cstring_view path);
 
   static SandboxPath* instance() { return &instance_; }
 
@@ -24,3 +27,5 @@ class SandboxPath {
 
   std::string sandbox_path_;
 };
+
+}  // namespace zypak

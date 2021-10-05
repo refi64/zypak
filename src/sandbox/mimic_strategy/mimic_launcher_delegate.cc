@@ -6,6 +6,7 @@
 #include "sandbox/mimic_strategy/mimic_launcher_delegate.h"
 
 #include "base/container_util.h"
+#include "base/cstring_view.h"
 #include "base/debug.h"
 #include "base/socket.h"
 #include "base/str_util.h"
@@ -30,7 +31,11 @@ bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
   }
 
   for (const auto& [var, value] : env) {
-    spawn_command.push_back("--env="s + var.data() + "=" + value.data());
+    std::string arg = "--env";
+    arg += var;
+    arg += '=';
+    arg += value;
+    spawn_command.push_back(arg);
   }
 
   for (const auto& assignment : fd_map) {
@@ -68,7 +73,7 @@ void MimicLauncherDelegate::ExecZygoteChild(std::vector<std::string> command) {
     Errno() << "Failed to chdir to /";
   }
 
-  constexpr std::string_view kChildPing = "CHILD_PING";
+  constexpr cstring_view kChildPing = "CHILD_PING";
   if (!Socket::Write(pid_oracle_.get(), kChildPing)) {
     Errno() << "Failed to send child ping message";
     ZYPAK_ASSERT(false);

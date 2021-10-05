@@ -14,7 +14,7 @@
 
 namespace zypak {
 
-bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak) {
+bool SpawnLatest(std::vector<cstring_view> args, bool wrap_with_zypak) {
   dbus::Bus* bus = dbus::Bus::Acquire();
   ZYPAK_ASSERT(bus);
 
@@ -26,33 +26,33 @@ bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak) {
   spawn.cwd = cwd.get();
 
   if (Env::Test(Env::kZypakSettingDisableSandbox)) {
-    spawn.env[Env::kZypakSettingDisableSandbox.data()] = "1";
+    spawn.env[Env::kZypakSettingDisableSandbox.ToOwned()] = "1";
   }
 
   if (wrap_with_zypak) {
     // XXX: This is similar to sandbox/launcher.cc
-    spawn.env[Env::kZypakBin.data()] = Env::Require(Env::kZypakBin);
-    spawn.env[Env::kZypakLib.data()] = Env::Require(Env::kZypakLib);
+    spawn.env[Env::kZypakBin.ToOwned()] = Env::Require(Env::kZypakBin);
+    spawn.env[Env::kZypakLib.ToOwned()] = Env::Require(Env::kZypakLib);
 
     if (auto widevine_path = Env::Get(Env::kZypakSettingExposeWidevinePath)) {
-      spawn.env[Env::kZypakSettingExposeWidevinePath.data()] = *widevine_path;
+      spawn.env[Env::kZypakSettingExposeWidevinePath.ToOwned()] = *widevine_path;
     }
 
     if (auto sandbox_filename = Env::Get(Env::kZypakSettingSandboxFilename)) {
-      spawn.env[Env::kZypakSettingSandboxFilename.data()] = *sandbox_filename;
+      spawn.env[Env::kZypakSettingSandboxFilename.ToOwned()] = *sandbox_filename;
     }
 
     if (auto ld_preload = Env::Get(Env::kZypakSettingLdPreload)) {
-      spawn.env[Env::kZypakSettingLdPreload.data()] = *ld_preload;
+      spawn.env[Env::kZypakSettingLdPreload.ToOwned()] = *ld_preload;
     }
 
-    auto helper = std::filesystem::path(Env::Require(Env::kZypakBin)) / "zypak-helper";
+    auto helper = std::filesystem::path(Env::Require(Env::kZypakBin).ToOwned()) / "zypak-helper";
     spawn.argv.push_back(helper.string());
     spawn.argv.push_back("host");
   }
 
-  for (std::string_view arg : args) {
-    spawn.argv.push_back(arg.data());
+  for (const cstring_view& arg : args) {
+    spawn.argv.emplace_back(arg);
   }
 
   spawn.flags = dbus::FlatpakPortalProxy::SpawnFlags::kSpawnLatest;

@@ -10,6 +10,7 @@
 #include <nickle.h>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 #include "base/debug.h"
 #include "base/evloop.h"
 #include "base/socket.h"
@@ -93,8 +94,8 @@ void MimicZygoteRunner::HandleMessage(EvLoop::SourceRef source) {
 }
 
 bool MimicZygoteRunner::Run() {
-  constexpr std::string_view kBootMessage = "ZYGOTE_BOOT";
-  constexpr std::string_view kHelloMessage = "ZYGOTE_OK";
+  constexpr cstring_view kBootMessage = "ZYGOTE_BOOT";
+  constexpr cstring_view kHelloMessage = "ZYGOTE_OK";
 
   if (!Socket::Write(kZygoteHostFd, kBootMessage)) {
     Errno() << "Failed to set boot message to Zygote";

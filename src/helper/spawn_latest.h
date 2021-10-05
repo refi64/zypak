@@ -4,11 +4,12 @@
 
 #pragma once
 
-#include <string_view>
 #include <vector>
+
+#include "base/cstring_view.h"
 
 namespace zypak {
 
-bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak);
+bool SpawnLatest(std::vector<cstring_view> args, bool wrap_with_zypak);
 
 }

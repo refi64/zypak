@@ -9,6 +9,7 @@
 #include <ostream>
 
 #include "base/base.h"
+#include "base/cstring_view.h"
 
 namespace zypak::dbus {
 
@@ -25,8 +26,8 @@ class Error {
   DBusError* get() { return &error_; }
 
   operator bool() const { return dbus_error_is_set(&error_); }
-  std::string_view name() const;
-  std::string_view message() const;
+  cstring_view name() const;
+  cstring_view message() const;
 
  private:
   DBusError error_;
