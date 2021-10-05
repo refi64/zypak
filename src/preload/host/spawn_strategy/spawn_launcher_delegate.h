@@ -5,19 +5,24 @@
 #pragma once
 
 #include "base/base.h"
-#include "sandbox/launcher.h"
+#include "base/launcher.h"
+#include "dbus/flatpak_portal_proxy.h"
 
-namespace zypak::sandbox::spawn_strategy {
+namespace zypak::preload {
 
 class SpawnLauncherDelegate : public Launcher::Delegate {
  public:
-  SpawnLauncherDelegate() {}
+  SpawnLauncherDelegate(dbus::FlatpakPortalProxy* portal,
+                        dbus::FlatpakPortalProxy::SpawnReplyHandler handler)
+      : portal_(portal), handler_(handler) {}
 
   bool Spawn(const Launcher::Helper& helper, std::vector<std::string> command, const FdMap& fd_map,
              EnvMap env, std::vector<std::string> exposed_paths, Launcher::Flags flags) override;
 
  private:
-  std::optional<unique_fd> OpenSpawnRequest();
+  bool was_called_ = false;
+  dbus::FlatpakPortalProxy* portal_;
+  dbus::FlatpakPortalProxy::SpawnReplyHandler handler_;
 };
 
-}  // namespace zypak::sandbox::spawn_strategy
+}  // namespace zypak::preload

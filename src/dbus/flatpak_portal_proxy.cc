@@ -141,7 +141,7 @@ MethodCall FlatpakPortalProxy::BuildSpawnMethodCall(SpawnCall spawn) {
 
     MessageWriter options_writer = writer.EnterContainer<TypeCode::kArray>("{sv}");
 
-    if (spawn.options.sandbox_flags) {
+    if (spawn.options.sandbox_flags != SpawnOptions::kNoSandboxFlags) {
       MessageWriter pair_writer = options_writer.EnterContainer<TypeCode::kDictEntry>();
       pair_writer.Write<TypeCode::kString>(kOptionSandboxFlags);
 

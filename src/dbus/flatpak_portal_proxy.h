@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/base.h"
+#include "base/enum_util.h"
 #include "base/fd_map.h"
 #include "dbus/bus.h"
 #include "dbus/bus_message.h"
@@ -42,26 +43,26 @@ class FlatpakPortalProxy {
   };
 
   // The flags to be passed to the portal for spawning processes.
-  enum SpawnFlags : std::uint32_t {
-    kSpawnFlags_ClearEnv = 1 << 0,
-    kSpawnFlags_SpawnLatest = 1 << 1,
-    kSpawnFlags_Sandbox = 1 << 2,
-    kSpawnFlags_NoNetwork = 1 << 3,
-    kSpawnFlags_WatchBus = 1 << 4,
-    kSpawnFlags_ExposePids = 1 << 5,
-    kSpawnFlags_EmitSpawnStarted = 1 << 6,
+  enum class SpawnFlags : std::uint32_t {
+    kClearEnv = 1 << 0,
+    kSpawnLatest = 1 << 1,
+    kSandbox = 1 << 2,
+    kNoNetwork = 1 << 3,
+    kWatchBus = 1 << 4,
+    kExposePids = 1 << 5,
+    kEmitSpawnStarted = 1 << 6,
   };
 
   static constexpr SpawnFlags kNoSpawnFlags = static_cast<SpawnFlags>(0);
 
   // The options to be passed to the portal for spawning processes.
   struct SpawnOptions {
-    enum SandboxFlags : std::uint32_t {
-      kSandboxFlags_ShareDisplay = 1 << 0,
-      kSandboxFlags_ShareSound = 1 << 1,
-      kSandboxFlags_ShareGpu = 1 << 2,
-      kSandboxFlags_SessionBus = 1 << 3,
-      kSandboxFlags_A11yBus = 1 << 4,
+    enum class SandboxFlags : std::uint32_t {
+      kShareDisplay = 1 << 0,
+      kShareSound = 1 << 1,
+      kShareGpu = 1 << 2,
+      kSessionBus = 1 << 3,
+      kA11yBus = 1 << 4,
     };
 
     static constexpr SandboxFlags kNoSandboxFlags = static_cast<SandboxFlags>(0);
@@ -119,3 +120,6 @@ class FlatpakPortalProxy {
 };
 
 }  // namespace zypak::dbus
+
+ZYPAK_DEFINE_ENUM_FLAGS(::zypak::dbus::FlatpakPortalProxy::SpawnFlags)
+ZYPAK_DEFINE_ENUM_FLAGS(::zypak::dbus::FlatpakPortalProxy::SpawnOptions::SandboxFlags)

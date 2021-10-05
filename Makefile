@@ -34,6 +34,7 @@ base_SOURCES := \
 	env.cc \
 	evloop.cc \
 	fd_map.cc \
+	launcher.cc \
 	socket.cc \
 	strace.cc \
 
@@ -72,7 +73,7 @@ preload_host_spawn_strategy_SOURCES := \
 	initialize.cc \
 	no_close_host_fd.cc \
 	process_override.cc \
-	spawn_request.cc \
+	spawn_launcher_delegate.cc \
 	supervisor.cc \
 
 $(call build_shlib,preload_host_spawn_strategy)
@@ -107,7 +108,6 @@ $(call build_shlib,preload_child_spawn_strategy)
 sandbox_NAME := zypak-sandbox
 sandbox_DEPS := base
 sandbox_SOURCES := \
-	launcher.cc \
 	main.cc \
 	mimic_strategy/fork.cc \
 	mimic_strategy/mimic_launcher_delegate.cc \
@@ -115,7 +115,6 @@ sandbox_SOURCES := \
 	mimic_strategy/status.cc \
 	mimic_strategy/zygote.cc \
 	spawn_strategy/run.cc \
-	spawn_strategy/spawn_launcher_delegate.cc \
 
 $(call build_exe,sandbox)
 

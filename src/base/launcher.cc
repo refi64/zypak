@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sandbox/launcher.h"
+#include "base/launcher.h"
 
 #include <unistd.h>
 
@@ -17,7 +17,7 @@
 #include "base/str_util.h"
 #include "base/strace.h"
 
-namespace zypak::sandbox {
+namespace zypak {
 
 constexpr std::string_view kSandboxApiVar = "SBX_CHROME_API_PRV";
 constexpr std::string_view kSandboxApiValue = "1";
@@ -67,14 +67,14 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
     }
   }
 
-  int flags = kWatchBus;
+  Flags flags = Flags::kWatchBus;
 
   if (child_type == "gpu-process" || Env::Test(Env::kZypakSettingAllowGpu)) {
-    flags |= kAllowGpu;
+    flags |= Flags::kAllowGpu;
   }
 
   if (!Env::Test(Env::kZypakSettingDisableSandbox)) {
-    flags |= kSandbox;
+    flags |= Flags::kSandbox;
   }
 
   auto bindir = Env::Require(Env::kZypakBin);
@@ -114,4 +114,4 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
                           std::move(exposed_paths), static_cast<Flags>(flags));
 }
 
-}  // namespace zypak::sandbox
+}  // namespace zypak

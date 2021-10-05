@@ -10,12 +10,15 @@
 
 #include <unordered_map>
 
+#include "base/launcher.h"
 #include "base/singleton.h"
 #include "base/socket.h"
 #include "base/unique_fd.h"
 #include "dbus/bus_readable_message.h"
 #include "dbus/flatpak_portal_proxy.h"
-#include "preload/host/spawn_strategy/spawn_request.h"
+#include "nickle.h"
+#include "preload/host/spawn_strategy/spawn_launcher_delegate.h"
+#include "sandbox/spawn_strategy/supervisor_communication.h"
 
 namespace zypak::preload {
 
@@ -40,7 +43,7 @@ bool Supervisor::InitAndAttachToBusThread(dbus::Bus* bus) {
     return false;
   }
 
-  if (dup2(child_end.get(), kZypakSupervisorFd) == -1) {
+  if (dup2(child_end.get(), sandbox::kZypakSupervisorFd) == -1) {
     Errno() << "Failed to dup onto supervisor fd";
     return false;
   }
@@ -168,7 +171,7 @@ void Supervisor::ReapProcess(StubPid stub, StubPidData* data, int* status) {
   ZYPAK_ASSERT(data->exit_status.has_value());
   *status = data->exit_status.value();
 
-  if (!Socket::Write(data->notify_exit.get(), kZypakSupervisorExitReply)) {
+  if (!Socket::Write(data->notify_exit.get(), sandbox::kZypakSupervisorExitReply)) {
     Errno() << "Failed to let stub process " << stub.pid << " know of exit";
     if (kill(stub.pid, SIGKILL) == -1) {
       Errno() << "Failed to emergency kill " << stub.pid;
@@ -200,7 +203,7 @@ void Supervisor::HandleSpawnExited(dbus::FlatpakPortalProxy::SpawnExitedMessage 
     return;
   }
 
-  if (!Socket::Write(data->notify_exit.get(), kZypakSupervisorExitReply)) {
+  if (!Socket::Write(data->notify_exit.get(), sandbox::kZypakSupervisorExitReply)) {
     Errno() << "Failed to let stub process know of exit";
     return;
   }
@@ -211,7 +214,7 @@ void Supervisor::HandleSpawnExited(dbus::FlatpakPortalProxy::SpawnExitedMessage 
 
 void Supervisor::HandleSpawnRequest(EvLoop::SourceRef source) {
   // Include the null terminator.
-  std::array<std::byte, kZypakSupervisorSpawnRequest.size() + 1> buffer;
+  std::array<std::byte, sandbox::kZypakSupervisorSpawnRequest.size() + 1> buffer;
   std::vector<unique_fd> fds;
   pid_t stub_pid;
 
@@ -227,7 +230,7 @@ void Supervisor::HandleSpawnRequest(EvLoop::SourceRef source) {
 
   Debug() << "Read spawn request";
 
-  if (kZypakSupervisorSpawnRequest != reinterpret_cast<const char*>(buffer.data())) {
+  if (sandbox::kZypakSupervisorSpawnRequest != reinterpret_cast<const char*>(buffer.data())) {
     Log() << "Invalid supervisor spawn request data";
     return;
   }
@@ -238,10 +241,7 @@ void Supervisor::HandleSpawnRequest(EvLoop::SourceRef source) {
   }
 
   unique_fd communication_fd = std::move(fds[0]);
-
-  if (!FulfillSpawnRequest(
-          &portal_, communication_fd,
-          std::bind(&Supervisor::HandleSpawnReply, this, stub_pid, std::placeholders::_1))) {
+  if (!FulfillSpawnRequest(std::move(communication_fd), stub_pid)) {
     Log() << "Failed to fulfill spawn request";
     return;
   }
@@ -250,6 +250,58 @@ void Supervisor::HandleSpawnRequest(EvLoop::SourceRef source) {
   auto stub_pids_data = stub_pids_data_.Acquire(GuardReleaseNotify::kNone);
   auto it = stub_pids_data->emplace(stub_pid, StubPidData{}).first;
   it->second.notify_exit = std::move(communication_fd);
+}
+
+bool Supervisor::FulfillSpawnRequest(unique_fd fd, pid_t stub_pid) {
+  std::array<std::byte, sandbox::kZypakSupervisorMaxMessageLength> target;
+  std::vector<unique_fd> fds;
+
+  Socket::ReadOptions options;
+  options.fds = &fds;
+  ssize_t len = Socket::Read(fd.get(), &target, options);
+  if (len <= 0) {
+    if (len == 0) {
+      Log() << "No data could be read from supervisor client";
+    } else {
+      Errno() << "Failed to read message from supervisor client";
+    }
+  }
+
+  nickle::buffers::ReadOnlyContainerBuffer buffer(target);
+  nickle::Reader reader(&buffer);
+
+  std::uint64_t argc;
+  if (!reader.Read<nickle::codecs::UInt64>(&argc)) {
+    Log() << "Failed to read command size";
+    return false;
+  }
+
+  std::vector<std::string> argv;
+  for (std::uint64_t i = 0; i < argc; i++) {
+    std::string item;
+    if (!reader.Read<nickle::codecs::String>(&item)) {
+      Log() << "Failed to read comment argument #" << i;
+      return false;
+    }
+
+    argv.push_back(std::move(item));
+  }
+
+  FdMap fd_map;
+  for (size_t i = 0; i < fds.size(); i++) {
+    std::uint32_t target_fd;
+    if (!reader.Read<nickle::codecs::UInt32>(&target_fd)) {
+      Log() << "Failed to read target fd #" << i;
+      return false;
+    }
+
+    fd_map.push_back(FdAssignment(std::move(fds[i]), target_fd));
+  }
+
+  SpawnLauncherDelegate delegate(
+      &portal_, std::bind(&Supervisor::HandleSpawnReply, this, stub_pid, std::placeholders::_1));
+  Launcher launcher(&delegate);
+  return launcher.Run(std::move(argv), fd_map);
 }
 
 void Supervisor::HandleSpawnReply(pid_t stub_pid, dbus::FlatpakPortalProxy::SpawnReply reply) {

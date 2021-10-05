@@ -7,17 +7,17 @@
 #include <unordered_map>
 
 #include "base/base.h"
+#include "base/enum_util.h"
 #include "base/fd_map.h"
 
-namespace zypak::sandbox {
+namespace zypak {
 
 // A Launcher allows execution of a sandboxed process, wrapped using zypak-helper. It will
 // automatically forward relevant environment variables.
 class Launcher {
  public:
   // The flags that can be passed to control the sandbox options.
-  // XXX: This needs better type safety.
-  enum Flags {
+  enum class Flags {
     kAllowGpu = 1 << 0,
     kSandbox = 1 << 1,
     kWatchBus = 1 << 2,
@@ -58,4 +58,6 @@ class Launcher {
   Delegate* delegate_;
 };
 
-}  // namespace zypak::sandbox
+}  // namespace zypak
+
+ZYPAK_DEFINE_ENUM_FLAGS(::zypak::Launcher::Flags)

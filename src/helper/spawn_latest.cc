@@ -47,7 +47,7 @@ bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak) {
     spawn.argv.push_back(arg.data());
   }
 
-  spawn.flags = dbus::FlatpakPortalProxy::kSpawnFlags_SpawnLatest;
+  spawn.flags = dbus::FlatpakPortalProxy::SpawnFlags::kSpawnLatest;
 
   // Forward stdio.
   FdMap fds;

@@ -21,10 +21,11 @@ bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
   spawn_command.push_back("flatpak-spawn");
   spawn_command.push_back("--no-network");
 
-  if (flags & Launcher::kWatchBus) {
+  if (flags & Launcher::Flags::kWatchBus) {
     spawn_command.push_back("--watch-bus");
   }
-  if (!(flags & Launcher::kAllowGpu) && (flags & Launcher::kSandbox)) {
+
+  if (!(flags & Launcher::Flags::kAllowGpu) && (flags & Launcher::Flags::kSandbox)) {
     spawn_command.push_back("--sandbox");
   }
 
