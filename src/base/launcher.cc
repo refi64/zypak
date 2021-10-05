@@ -27,6 +27,8 @@ constexpr std::string_view kSandboxNsEnabled = "1";
 
 constexpr std::string_view kXdgConfigHomeVar = "XDG_CONFIG_HOME";
 
+constexpr char kPreloadDelimiters[] = ": ";
+
 std::vector<std::string> Launcher::Helper::BuildCommandWrapper(const FdMap& fd_map) const {
   std::vector<std::string> wrapper;
 
@@ -98,6 +100,15 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
   env[kSandboxNetNsVar] = kSandboxNsEnabled;
 
   std::vector<std::string> exposed_paths;
+
+  if (auto preload = Env::Get(Env::kZypakSettingLdPreload)) {
+    env[Env::kZypakSettingLdPreload] = *preload;
+
+    // Make sure to expose the individual library filenames into the sandbox.
+    SplitInto(*preload, kPreloadDelimiters, std::back_inserter(exposed_paths),
+              PieceType<std::string>{});
+  }
+
   if (auto path = Env::Get(Env::kZypakSettingExposeWidevinePath);
       path && !path->empty() && access(path->data(), F_OK) == 0) {
     exposed_paths.push_back(std::string(path->data()));

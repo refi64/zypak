@@ -42,6 +42,10 @@ bool SpawnLatest(std::vector<std::string_view> args, bool wrap_with_zypak) {
       spawn.env[Env::kZypakSettingSandboxFilename.data()] = *sandbox_filename;
     }
 
+    if (auto ld_preload = Env::Get(Env::kZypakSettingLdPreload)) {
+      spawn.env[Env::kZypakSettingLdPreload.data()] = *ld_preload;
+    }
+
     auto helper = std::filesystem::path(Env::Require(Env::kZypakBin)) / "zypak-helper";
     spawn.argv.push_back(helper.string());
     spawn.argv.push_back("host");

@@ -118,13 +118,21 @@ bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
 
 std::string GetPreload(std::string_view mode, std::string_view libdir) {
   std::vector<std::string> preload_names;
-  std::vector<std::string> preload_libs;
 
   preload_names.push_back(mode.data());
   if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
     preload_names.push_back(std::string(mode) + "-spawn-strategy");
   } else if (mode == "child") {
     preload_names.push_back(std::string(mode) + "-mimic-strategy");
+  }
+
+  std::vector<std::string> preload_libs;
+
+  // LD_PRELOAD is loaded in left-to-right order, and the last reference to a symbol is used to
+  // resolve it. We want Zypak's symbols to have the highest priority, so we put any extra libraries
+  // *first*, that way in the event of a conflict, Zypak's symbols will override all others.
+  if (auto preload = Env::Get(Env::kZypakSettingLdPreload); preload && !preload->empty()) {
+    preload_libs.push_back(std::string(*preload));
   }
 
   for (std::string_view name : preload_names) {

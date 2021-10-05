@@ -19,25 +19,31 @@ inline bool EndsWith(std::string_view str, std::string_view suffix) {
   return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
 }
 
-// Splits the given string view by the character c, storing each item in the given output iterator.
-template <typename It>
-void SplitInto(std::string_view str, char c, It out) {
+// Tag type representing a string piece.
+template <typename P>
+struct PieceType {};
+
+// Splits the given string view by any of the characters in 'delims' (or a single char, if that's
+// passed), storing each item in the given output iterator. The PieceType<P> argument can be used to
+// signify a type P that each string_view will be given to before saving into the output iterator.
+template <typename Delims, typename It, typename P = std::string_view>
+void SplitInto(std::string_view str, Delims delims, It out, PieceType<P> = {}) {
   std::size_t start = 0;
   std::size_t pos;
 
   for (;;) {
-    pos = str.find_first_of(c, start);
+    pos = str.find_first_of(delims, start);
     if (pos == std::string_view::npos) {
       break;
     }
 
-    *out++ = str.substr(start, pos - start);
+    *out++ = P(str.substr(start, pos - start));
     start = pos + 1;
   }
 
   std::string_view leftover = str.substr(start);
   if (!leftover.empty()) {
-    *out++ = leftover;
+    *out++ = P(leftover);
   }
 }
 

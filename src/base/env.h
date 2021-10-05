@@ -37,6 +37,7 @@ class Env {
   static constexpr std::string_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
   static constexpr std::string_view kZypakSettingSandboxFilename = "ZYPAK_SANDBOX_FILENAME";
   static constexpr std::string_view kZypakSettingExposeWidevinePath = "ZYPAK_EXPOSE_WIDEVINE_PATH";
+  static constexpr std::string_view kZypakSettingLdPreload = "ZYPAK_LD_PRELOAD";
 };
 
 }  // namespace zypak

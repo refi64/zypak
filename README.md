@@ -64,6 +64,13 @@ and has mode 4755.
 To fix this, set `ZYPAK_SANDBOX_FILENAME=the-sandbox-basename`, e.g.
 `ZYPAK_SANDBOX_FILENAME=msedge-sandbox`.
 
+## Setting `LD_PRELOAD`
+
+Zypak needs to override `LD_PRELOAD` in order to inject its redirection libraries into the
+application process. If you need to add your own libraries to `LD_PRELOAD`, place them in
+`ZYPAK_LD_PRELOAD`, which will result in Zypak adding them to the `LD_PRELOAD` list, in addition to
+its own required libraries.
+
 ## Using a different version
 
 If you want to try a different Zypak version for testing, or without using the
