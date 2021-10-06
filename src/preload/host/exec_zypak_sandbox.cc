@@ -24,7 +24,7 @@ using namespace zypak;
 bool IsCurrentExe(cstring_view exec) {
   struct stat self_st, exec_st;
   return stat("/proc/self/exe", &self_st) != -1 && stat(exec.c_str(), &exec_st) != -1 &&
-         self_st.st_ino == exec_st.st_ino;
+         self_st.st_dev == exec_st.st_dev && self_st.st_ino == exec_st.st_ino;
 }
 
 bool HasTypeArg(char* const* argv) {
