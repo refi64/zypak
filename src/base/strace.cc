@@ -23,6 +23,13 @@ constexpr std::string_view kStraceChildTypes = "child:";
 
 // static
 bool Strace::ShouldTraceHost() {
+  // If only tracing the trampolined process was request, don't trace the parent
+  if ((Env::Test(Env::kZypakSettingStraceNoTrampoline) && !Env::Test(Env::kZypakWasTrampolined)) ||
+      // ...but otherwise, the parent is already being traced, so don't run strace again.
+      (!Env::Test(Env::kZypakSettingStraceNoTrampoline) && Env::Test(Env::kZypakWasTrampolined))) {
+    return false;
+  }
+
   auto target_env = Env::Get(Env::kZypakSettingStrace);
   return target_env && (*target_env == kStraceAll || *target_env == kStraceHost);
 }

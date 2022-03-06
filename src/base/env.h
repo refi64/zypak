@@ -24,6 +24,8 @@ class Env {
   static void Clear(cstring_view name);
   // Tests if the variable is set to a truthy value (i.e. not empty, 0, or false).
   static bool Test(cstring_view name);
+  // Tests if the given quirk is enabled.
+  static bool IsQuirkEnabled(cstring_view quirk);
 
   static constexpr cstring_view kZypakBin = "ZYPAK_BIN";
   static constexpr cstring_view kZypakLib = "ZYPAK_LIB";
@@ -33,11 +35,18 @@ class Env {
   static constexpr cstring_view kZypakSettingStrace = "ZYPAK_STRACE";
   static constexpr cstring_view kZypakSettingStraceFilter = "ZYPAK_STRACE_FILTER";
   static constexpr cstring_view kZypakSettingStraceNoLineLimit = "ZYPAK_STRACE_NO_LINE_LIMIT";
+  static constexpr cstring_view kZypakSettingStraceNoTrampoline = "ZYPAK_STRACE_NO_TRAMPOLINE";
   static constexpr cstring_view kZypakSettingDisableSandbox = "ZYPAK_DISABLE_SANDBOX";
   static constexpr cstring_view kZypakSettingAllowGpu = "ZYPAK_ALLOW_GPU";
   static constexpr cstring_view kZypakSettingSandboxFilename = "ZYPAK_SANDBOX_FILENAME";
   static constexpr cstring_view kZypakSettingExposeWidevinePath = "ZYPAK_EXPOSE_WIDEVINE_PATH";
   static constexpr cstring_view kZypakSettingLdPreload = "ZYPAK_LD_PRELOAD";
+  static constexpr cstring_view kZypakSettingQuirks = "ZYPAK_QUIRKS";
+
+  static constexpr cstring_view kZypakQuirkWebexTrampoline = "webex-trampoline";
+
+  // Used for the WebEx quirk, to signify to zypak-helper that this was a "trampolined" invocation.
+  static constexpr cstring_view kZypakWasTrampolined = "ZYPAK_INTERNAL_WAS_TRAMPOLINED";
 };
 
 }  // namespace zypak
