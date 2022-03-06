@@ -110,6 +110,15 @@ modules somewhere in your Flatpak manifest:
       tag: THE_RELEASE_TAG
 ```
 
+## Quirks
+
+Zypak has "quirks" available for specific applications that need special handling in order for the
+sandboxing functionality to work. These can be configured via `ZYPAK_QUIRKS=quirk1,quirk2,...`. The
+following quirks are currently available:
+
+- `webex-trampoline`: Support WebEx's usage of an intermediate process before it runs the main
+  application.
+
 ## Debugging
 
 - Set `ZYPAK_DEBUG=1` to enable debug logging.

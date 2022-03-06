@@ -11,6 +11,7 @@
 
 #include "base/base.h"
 #include "base/env.h"
+#include "base/file_util.h"
 #include "base/str_util.h"
 #include "preload/declare_override.h"
 #include "preload/host/sandbox_path.h"
@@ -24,12 +25,6 @@ using namespace zypak;
 
 constexpr std::string_view kElectronRelauncherType = "relauncher";
 constexpr cstring_view kElectronRelauncherFdMap = "3=3";
-
-bool IsCurrentExe(cstring_view exec) {
-  struct stat self_st, exec_st;
-  return stat("/proc/self/exe", &self_st) != -1 && stat(exec.c_str(), &exec_st) != -1 &&
-         self_st.st_dev == exec_st.st_dev && self_st.st_ino == exec_st.st_ino;
-}
 
 std::optional<cstring_view> GetTypeArg(char* const* argv) {
   constexpr cstring_view kTypeArgPrefix = "--type=";
@@ -59,8 +54,8 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
 
   if (file == SandboxPath::instance()->sandbox_path()) {
     file = "zypak-sandbox";
-  } else if (auto type = GetTypeArg(argv);
-             (!type || type == kElectronRelauncherType) && IsCurrentExe(file)) {
+  } else if (auto type = GetTypeArg(argv); (!type || type == kElectronRelauncherType) &&
+                                           PathsPointToSameFile(file, kCurrentExe)) {
     // exec on the host exe, so pass it through the sandbox.
     // "Leaking" calls to 'new' doesn't matter here since we're about to exec anyway.
     std::vector<const char*> c_argv;

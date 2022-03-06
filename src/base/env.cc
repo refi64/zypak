@@ -5,9 +5,13 @@
 
 #include "base/env.h"
 
+#include <algorithm>
 #include <cstdlib>
+#include <iterator>
+#include <vector>
 
 #include "base/debug.h"
+#include "base/str_util.h"
 
 namespace zypak {
 
@@ -45,6 +49,20 @@ bool Env::Test(cstring_view name, bool default_value /*= false*/) {
   } else {
     return default_value;
   }
+}
+
+// static
+bool Env::IsQuirkEnabled(cstring_view quirk) {
+  constexpr cstring_view kQuirksDelim = ",";
+
+  auto quirks_str = Env::Get(Env::kZypakSettingQuirks);
+  if (!quirks_str) {
+    return {};
+  }
+
+  std::vector<std::string_view> quirks;
+  SplitInto(*quirks_str, kQuirksDelim, std::back_inserter(quirks));
+  return std::find(quirks.begin(), quirks.end(), quirk) != quirks.end();
 }
 
 }  // namespace zypak

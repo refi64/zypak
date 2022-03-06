@@ -56,6 +56,14 @@ $(call build_stlib,dbus)
 
 preload_PUBLIC_LIBS := -ldl
 
+preload_quirks_webex_trampoline_SOURCE_DIR := preload/quirks
+preload_quirks_webex_trampoline_NAME := zypak-preload-quirks-webex-trampoline
+preload_quirks_webex_trampoline_DEPS := preload base
+preload_quirks_webex_trampoline_SOURCES := \
+	webex_trampoline.cc
+
+$(call build_shlib,preload_quirks_webex_trampoline)
+
 preload_host_SOURCE_DIR := preload/host
 preload_host_NAME := zypak-preload-host
 preload_host_DEPS := preload base

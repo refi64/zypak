@@ -119,11 +119,17 @@ bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
 std::string GetPreload(std::string_view mode, std::string_view libdir) {
   std::vector<std::string> preload_names;
 
-  preload_names.emplace_back(mode);
-  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
-    preload_names.push_back(std::string(mode) + "-spawn-strategy");
-  } else if (mode == "child") {
-    preload_names.push_back(std::string(mode) + "-mimic-strategy");
+  if (Env::IsQuirkEnabled(Env::kZypakQuirkWebexTrampoline) &&
+      !Env::Test(Env::kZypakWasTrampolined)) {
+    Debug() << "Enabling WebEx quirks library";
+    preload_names.emplace_back("quirks-webex-trampoline");
+  } else {
+    preload_names.emplace_back(mode);
+    if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+      preload_names.push_back(std::string(mode) + "-spawn-strategy");
+    } else if (mode == "child") {
+      preload_names.push_back(std::string(mode) + "-mimic-strategy");
+    }
   }
 
   std::vector<std::string> preload_libs;
@@ -168,7 +174,11 @@ int main(int argc, char** argv) {
 
     return 0;
   } else if (mode == "host" || mode == "spawn-strategy-test") {
-    DetermineZygoteStrategy();
+    if (!Env::Test(Env::kZypakWasTrampolined)) {
+      // If kZypakWasTrampolined, then the parent process should already have determined this for
+      // us.
+      DetermineZygoteStrategy();
+    }
 
     if (mode == "spawn-strategy-test") {
       return !Env::Test(Env::kZypakZygoteStrategySpawn);
