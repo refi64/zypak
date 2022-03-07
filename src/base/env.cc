@@ -39,11 +39,11 @@ void Env::Set(cstring_view name, cstring_view value, bool overwrite /*= true*/) 
 void Env::Clear(cstring_view name) { ZYPAK_ASSERT(unsetenv(name.c_str()) == 0); }
 
 // static
-bool Env::Test(cstring_view name) {
+bool Env::Test(cstring_view name, bool default_value /*= false*/) {
   if (auto env = Get(name)) {
     return !env->empty() && *env != "0" && *env != "false";
   } else {
-    return false;
+    return default_value;
   }
 }
 

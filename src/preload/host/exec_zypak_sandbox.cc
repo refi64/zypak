@@ -49,36 +49,37 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
     return -1;
   }
 
+  Env::Clear("LD_PRELOAD");
+
   if (file == SandboxPath::instance()->sandbox_path()) {
-    Env::Clear("LD_PRELOAD");
     file = "zypak-sandbox";
-  } else if (!HasTypeArg(argv)) {
-    Env::Clear("LD_PRELOAD");
+  } else if (!HasTypeArg(argv) && IsCurrentExe(file)) {
+    // exec on the host exe, so pass it through the sandbox.
+    // "Leaking" calls to 'new' doesn't matter here since we're about to exec anyway.
+    std::vector<const char*> c_argv;
+    c_argv.push_back("zypak-helper");
 
-    if (IsCurrentExe(file)) {
-      // exec on the host exe, so pass it through the sandbox.
-      // "Leaking" calls to 'new' doesn't matter here since we're about to exec anyway.
-      std::vector<const char*> c_argv;
-      c_argv.push_back("zypak-helper");
-
-      // Swap out the main binary to the wrapper if one was used, and assume the wrapper will use
-      // zypak-wrapper.sh itself (i.e. we don't need to handle it here).
+    if (Env::Test(Env::kZypakSettingSpawnLatestOnReexec, /*default_value=*/true)) {
       if (auto wrapper = Env::Get("CHROME_WRAPPER")) {
+        // Swap out the main binary to the wrapper if one was used, and assume the wrapper
+        // will use zypak-wrapper.sh itself (i.e. we don't need to handle it here).
         c_argv.push_back("exec-latest");
         c_argv.push_back(wrapper->data());
         argv++;
       } else {
         c_argv.push_back("host-latest");
       }
-
-      for (; *argv != nullptr; argv++) {
-        c_argv.push_back(*argv);
-      }
-
-      c_argv.push_back(nullptr);
-
-      return original("zypak-helper", const_cast<char* const*>(c_argv.data()));
+    } else {
+      c_argv.push_back("host");
     }
+
+    for (; *argv != nullptr; argv++) {
+      c_argv.push_back(*argv);
+    }
+
+    c_argv.push_back(nullptr);
+
+    return original("zypak-helper", const_cast<char* const*>(c_argv.data()));
   }
 
   return original(file, argv);

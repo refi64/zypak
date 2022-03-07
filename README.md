@@ -15,12 +15,21 @@ This requires your Flatpak to be using:
 Now, instead of running your Electron binary directly, call it via
 `zypak-wrapper PATH/TO/MY/ELECTRON/BINARY`.
 
-## Usage with a wrapper script
+## Re-exec behavior
 
-If this is wrapping an application that requries some sort of wrapper script,
-make sure you set `CHROME_WRAPPER=` to the path of said script. Otherwise, if the
-application attempts to re-exec itself (i.e. `chrome://restart`), it won't be using
-the wrapper on re-exec, leading to potentially unexpected behavior.
+By default, Zypak will detect when the app is re-exec'ing itself and attempt to
+spawn the latest version, in order for `chrome://restart` to function. This can
+be disabled by setting `ZYPAK_SPAWN_LATEST_ON_REEXEC=0`. **This will be the
+default in the future once existing browsers are migrated,** because it matches
+more closely with what Electron would expect.
+
+### Usage with a wrapper script
+
+If `ZYPAK_SPAWN_LATEST_ON_REEXEC=1` (the current default) is active, and Zypak
+was invoked by some sort of wrapper script, make sure you set `CHROME_WRAPPER=`
+to the path of said script. Otherwise, if the application attempts to re-exec
+itself (i.e. `chrome://restart`), it won't be using the wrapper on re-exec,
+leading to potentially unexpected behavior.
 
 ## Widevine support
 

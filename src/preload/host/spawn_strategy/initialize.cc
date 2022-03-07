@@ -23,10 +23,6 @@ int MAIN_OVERRIDE(int argc, char** argv, char** envp) {
   DebugContext::instance()->LoadFromEnvironment();
   DebugContext::instance()->set_name("preload-host-spawn-strategy");
 
-  // Unset LD_PRELOAD so exec'd processes don't call back into here again.
-  // This would particularly break anything that assumes only one thread is running.
-  unsetenv("LD_PRELOAD");
-
   dbus::Bus* bus = dbus::Bus::Acquire();
   ZYPAK_ASSERT(bus);
 

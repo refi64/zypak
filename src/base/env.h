@@ -23,7 +23,7 @@ class Env {
   // Clears the given environment variable.
   static void Clear(cstring_view name);
   // Tests if the variable is set to a truthy value (i.e. not empty, 0, or false).
-  static bool Test(cstring_view name);
+  static bool Test(cstring_view name, bool default_value = false);
 
   static constexpr cstring_view kZypakBin = "ZYPAK_BIN";
   static constexpr cstring_view kZypakLib = "ZYPAK_LIB";
@@ -38,6 +38,7 @@ class Env {
   static constexpr cstring_view kZypakSettingSandboxFilename = "ZYPAK_SANDBOX_FILENAME";
   static constexpr cstring_view kZypakSettingExposeWidevinePath = "ZYPAK_EXPOSE_WIDEVINE_PATH";
   static constexpr cstring_view kZypakSettingLdPreload = "ZYPAK_LD_PRELOAD";
+  static constexpr cstring_view kZypakSettingSpawnLatestOnReexec = "ZYPAK_SPAWN_LATEST_ON_REEXEC";
 };
 
 }  // namespace zypak
