@@ -2,7 +2,8 @@
 
 Allows you to run Chromium based applications that require a sandbox in a Flatpak environment,
 by using LD_PRELOAD magic and a redirection system that redirects Chromium's sandbox to use
-the Flatpak sandbox.
+the Flatpak sandbox. Zypak is actively used by the majority of the Electron and Chrome-based
+Flatpaks on Flathub.
 
 ## Basic usage
 
