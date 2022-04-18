@@ -31,7 +31,7 @@ bool MimicLauncherDelegate::Spawn(const Launcher::Helper& helper, std::vector<st
   }
 
   for (const auto& [var, value] : env) {
-    std::string arg = "--env";
+    std::string arg = "--env=";
     arg += var;
     arg += '=';
     arg += value;
