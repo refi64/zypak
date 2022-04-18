@@ -157,7 +157,10 @@ int main(int argc, char** argv) {
 
   cstring_view mode = *it++;
 
-  if (mode == "host-latest" || mode == "exec-latest") {
+  if (mode == "version") {
+    printf("Zypak %s\n", ZYPAK_RELEASE);
+    return 0;
+  } else if (mode == "host-latest" || mode == "exec-latest") {
     bool wrap_with_zypak = mode == "host-latest";
     if (!SpawnLatest(ArgsView(it, args.end()), wrap_with_zypak)) {
       return 1;

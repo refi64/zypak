@@ -8,6 +8,7 @@ DBUS_LDLIBS := $(shell pkg-config --libs dbus-1)
 
 CXX := g++
 CXXFLAGS := \
+		-DZYPAK_RELEASE="\"$(shell git describe --tags --dirty)\"" \
 		-fstack-protector-all -fstack-clash-protection -Wall -Werror \
 		-std=c++17 -g -pthread \
 		-Inickle -Isrc \
