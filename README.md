@@ -14,7 +14,9 @@ This requires your Flatpak to be using:
   built-in.
 
 Now, instead of running your Electron binary directly, call it via
-`zypak-wrapper PATH/TO/MY/ELECTRON/BINARY`.
+`zypak-wrapper PATH/TO/MY/ELECTRON/BINARY`. Note that this will only work if
+your application is fully installed; simply running `zypak-wrapper` from a
+`flatpak-builder --run` shell or similar will fail.
 
 ## Re-exec behavior
 
