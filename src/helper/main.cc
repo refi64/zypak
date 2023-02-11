@@ -221,6 +221,8 @@ int main(int argc, char** argv) {
 
     if (!Strace::HasLineLimit()) {
       new_command.push_back("-v");
+      new_command.push_back("-s1024");
+      new_command.push_back("-k");
     }
 
     ExtendContainerCopy(&new_command, command);
