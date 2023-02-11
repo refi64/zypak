@@ -59,7 +59,7 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
     std::vector<const char*> c_argv;
     c_argv.push_back("zypak-helper");
 
-    if (Env::Test(Env::kZypakSettingSpawnLatestOnReexec, /*default_value=*/true)) {
+    if (Env::Test(Env::kZypakSettingSpawnLatestOnReexec, /*default_value=*/false)) {
       if (auto wrapper = Env::Get("CHROME_WRAPPER")) {
         // Swap out the main binary to the wrapper if one was used, and assume the wrapper
         // will use zypak-wrapper.sh itself (i.e. we don't need to handle it here).
