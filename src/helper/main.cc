@@ -180,12 +180,12 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
-  } else if (mode == "child") {
-    if (!ApplyFdMapFromArgs(&it, args.end())) {
-      return 1;
-    }
-  } else {
+  } else if (mode != "child") {
     Log() << "Invalid mode: " << mode;
+    return 1;
+  }
+
+  if (!ApplyFdMapFromArgs(&it, args.end())) {
     return 1;
   }
 

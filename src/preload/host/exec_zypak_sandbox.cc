@@ -11,6 +11,7 @@
 
 #include "base/base.h"
 #include "base/env.h"
+#include "base/str_util.h"
 #include "preload/declare_override.h"
 #include "preload/host/sandbox_path.h"
 
@@ -21,22 +22,27 @@ namespace {
 
 using namespace zypak;
 
+constexpr std::string_view kElectronRelauncherType = "relauncher";
+constexpr cstring_view kElectronRelauncherFdMap = "3=3";
+
 bool IsCurrentExe(cstring_view exec) {
   struct stat self_st, exec_st;
   return stat("/proc/self/exe", &self_st) != -1 && stat(exec.c_str(), &exec_st) != -1 &&
          self_st.st_dev == exec_st.st_dev && self_st.st_ino == exec_st.st_ino;
 }
 
-bool HasTypeArg(char* const* argv) {
+std::optional<cstring_view> GetTypeArg(char* const* argv) {
   constexpr cstring_view kTypeArgPrefix = "--type=";
 
   for (; *argv != nullptr; argv++) {
-    if (strncmp(*argv, kTypeArgPrefix.c_str(), kTypeArgPrefix.size()) == 0) {
-      return true;
+    cstring_view arg = *argv;
+    if (StartsWith(arg, kTypeArgPrefix)) {
+      arg.remove_prefix(kTypeArgPrefix.size());
+      return arg;
     }
   }
 
-  return false;
+  return {};
 }
 
 }  // namespace
@@ -53,7 +59,8 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
 
   if (file == SandboxPath::instance()->sandbox_path()) {
     file = "zypak-sandbox";
-  } else if (!HasTypeArg(argv) && IsCurrentExe(file)) {
+  } else if (auto type = GetTypeArg(argv);
+             (!type || type == kElectronRelauncherType) && IsCurrentExe(file)) {
     // exec on the host exe, so pass it through the sandbox.
     // "Leaking" calls to 'new' doesn't matter here since we're about to exec anyway.
     std::vector<const char*> c_argv;
@@ -71,6 +78,10 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
       }
     } else {
       c_argv.push_back("host");
+      if (type == kElectronRelauncherType) {
+        c_argv.push_back(kElectronRelauncherFdMap.c_str());
+      }
+      c_argv.push_back("-");
     }
 
     for (; *argv != nullptr; argv++) {

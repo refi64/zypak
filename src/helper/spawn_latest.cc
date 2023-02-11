@@ -49,6 +49,7 @@ bool SpawnLatest(std::vector<cstring_view> args, bool wrap_with_zypak) {
     auto helper = std::filesystem::path(Env::Require(Env::kZypakBin).ToOwned()) / "zypak-helper";
     spawn.argv.push_back(helper.string());
     spawn.argv.push_back("host");
+    spawn.argv.push_back("-");
   }
 
   for (const cstring_view& arg : args) {
