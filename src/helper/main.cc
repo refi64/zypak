@@ -69,7 +69,7 @@ void DetermineZygoteStrategy() {
 }
 
 bool SanityCheckWidevinePath(cstring_view widevine_path) {
-  if (!EndsWith(widevine_path, "WidevineCdm") && !EndsWith(widevine_path, "WidevineCdm/")) {
+  if (!widevine_path.ends_with("WidevineCdm") && !widevine_path.ends_with("WidevineCdm/")) {
     Log() << "Rejecting potentially incorrect Widevine CDM path: " << widevine_path;
     return false;
   }

@@ -36,7 +36,7 @@ std::optional<cstring_view> GetTypeArg(char* const* argv) {
 
   for (; *argv != nullptr; argv++) {
     cstring_view arg = *argv;
-    if (StartsWith(arg, kTypeArgPrefix)) {
+    if (arg.starts_with(kTypeArgPrefix)) {
       arg.remove_prefix(kTypeArgPrefix.size());
       return arg;
     }

@@ -38,7 +38,7 @@ bool Strace::ShouldTraceChild(std::string_view child_type) {
     return true;
   }
 
-  if (StartsWith(*target_env, kStraceChildTypes)) {
+  if (target_env->starts_with(kStraceChildTypes)) {
     target_env->remove_prefix(kStraceChildTypes.length());
 
     std::set<std::string_view> types;

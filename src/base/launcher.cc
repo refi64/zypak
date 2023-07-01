@@ -63,7 +63,7 @@ bool Launcher::Run(std::vector<std::string> command, const FdMap& fd_map) {
   std::string child_type;
   constexpr std::string_view kTypeArgPrefix = "--type=";
   for (const std::string& arg : command) {
-    if (StartsWith(arg, kTypeArgPrefix)) {
+    if (arg.starts_with(kTypeArgPrefix)) {
       child_type = arg.substr(kTypeArgPrefix.size());
       break;
     }

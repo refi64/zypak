@@ -26,7 +26,7 @@ bool SandboxPath::LooksLikeSandboxPath(cstring_view path) {
     cstring_view sandbox =
         Env::Get(Env::kZypakSettingSandboxFilename).value_or(kDefaultSandboxFilename);
     std::string suffix = "/"s + sandbox.ToOwned();
-    return EndsWith(path, suffix);
+    return path.ends_with(suffix);
   }
 
   return sandbox_path_ == path;

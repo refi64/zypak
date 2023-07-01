@@ -9,16 +9,6 @@
 
 namespace zypak {
 
-// Determines if the string starts with the given prefix.
-inline bool StartsWith(std::string_view str, std::string_view prefix) {
-  return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
-}
-
-// Determines if the string ends with the given prefix.
-inline bool EndsWith(std::string_view str, std::string_view suffix) {
-  return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
-}
-
 // Tag type representing a string piece.
 template <typename P>
 struct PieceType {};
