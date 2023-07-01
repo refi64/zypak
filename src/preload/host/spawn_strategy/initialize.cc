@@ -10,6 +10,7 @@
 
 #include "base/base.h"
 #include "base/debug.h"
+#include "base/env.h"
 #include "base/socket.h"
 #include "dbus/bus.h"
 #include "preload/declare_override.h"
@@ -20,6 +21,8 @@ using namespace zypak;
 using namespace zypak::preload;
 
 int MAIN_OVERRIDE(int argc, char** argv, char** envp) {
+  Env::Clear("LD_PRELOAD");
+
   DebugContext::instance()->LoadFromEnvironment();
   DebugContext::instance()->set_name("preload-host-spawn-strategy");
 

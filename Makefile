@@ -66,6 +66,14 @@ preload_host_SOURCES := \
 
 $(call build_shlib,preload_host)
 
+preload_host_mimic_strategy_SOURCE_DIR := preload/host/mimic_strategy
+preload_host_mimic_strategy_NAME := zypak-preload-host-mimic-strategy
+preload_host_mimic_strategy_DEPS := preload base
+preload_host_mimic_strategy_SOURCES := \
+	initialize.cc \
+
+$(call build_shlib,preload_host_mimic_strategy)
+
 preload_host_spawn_strategy_SOURCE_DIR := preload/host/spawn_strategy
 preload_host_spawn_strategy_NAME := zypak-preload-host-spawn-strategy
 preload_host_spawn_strategy_DEPS := preload dbus base
@@ -140,6 +148,7 @@ install : all
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-helper
 	install -Dm 755 -t $(FLATPAK_DEST)/bin build/zypak-sandbox
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host.so
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-mimic-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-spawn-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child-mimic-strategy.so

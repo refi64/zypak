@@ -55,8 +55,6 @@ DECLARE_OVERRIDE(int, execvp, const char* file, char* const* argv) {
     return -1;
   }
 
-  Env::Clear("LD_PRELOAD");
-
   if (file == SandboxPath::instance()->sandbox_path()) {
     file = "zypak-sandbox";
   } else if (auto type = GetTypeArg(argv);
