@@ -20,19 +20,18 @@ your application is fully installed; simply running `zypak-wrapper` from a
 
 ## Re-exec behavior
 
-By default, Zypak will detect when the app is re-exec'ing itself and attempt to
-spawn the latest version, in order for `chrome://restart` to function. This can
-be disabled by setting `ZYPAK_SPAWN_LATEST_ON_REEXEC=0`. **This will be the
-default in the future once existing browsers are migrated,** because it matches
-more closely with what Electron would expect.
+`ZYPAK_SPAWN_LATEST_ON_REEXEC=1` will have Zypak detect when the app is re-
+exec'ing itself and attempt to spawn the latest version, in order for
+`chrome://restart` to function. (Previous versions of Zypak defaulted to this
+being enabled.)
 
 ### Usage with a wrapper script
 
-If `ZYPAK_SPAWN_LATEST_ON_REEXEC=1` (the current default) is active, and Zypak
-was invoked by some sort of wrapper script, make sure you set `CHROME_WRAPPER=`
-to the path of said script. Otherwise, if the application attempts to re-exec
-itself (i.e. `chrome://restart`), it won't be using the wrapper on re-exec,
-leading to potentially unexpected behavior.
+If `ZYPAK_SPAWN_LATEST_ON_REEXEC=1` is set, and Zypak was invoked by some sort
+of wrapper script, make sure you set `CHROME_WRAPPER=` to the path of said
+script. Otherwise, if the application attempts to re-exec itself (i.e.
+`chrome://restart`), it won't be using the wrapper on re-exec, leading to
+potentially unexpected behavior.
 
 ## Widevine support
 
