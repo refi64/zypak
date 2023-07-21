@@ -152,7 +152,7 @@ std::string GetPreload(std::string_view mode, std::string_view libdir) {
 bool LooksLikeElfFile(cstring_view target) {
   unique_fd target_fd;
 
-  if (target.starts_with("/")) {
+  if (target.find("/") != cstring_view::npos) {
     target_fd = open(target.c_str(), O_RDONLY);
     if (target_fd.invalid()) {
       return false;
