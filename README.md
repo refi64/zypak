@@ -82,6 +82,11 @@ application process. If you need to add your own libraries to `LD_PRELOAD`, plac
 `ZYPAK_LD_PRELOAD`, which will result in Zypak adding them to the `LD_PRELOAD` list, in addition to
 its own required libraries.
 
+## CEF support
+
+If the application uses CEF, set `ZYPAK_CEF_LIBRARY_PATH` to the absolute path to the `libcef.so`
+library.
+
 ## Using a different version
 
 If you want to try a different Zypak version for testing, or without using the

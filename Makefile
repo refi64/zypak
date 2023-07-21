@@ -80,12 +80,19 @@ preload_host_spawn_strategy_DEPS := preload dbus base
 preload_host_spawn_strategy_SOURCES := \
 	bus_safe_fork.cc \
 	initialize.cc \
-	no_close_host_fd.cc \
 	process_override.cc \
 	spawn_launcher_delegate.cc \
 	supervisor.cc \
 
 $(call build_shlib,preload_host_spawn_strategy)
+
+preload_host_spawn_strategy_close_SOURCE_DIR := preload/host/spawn_strategy/close
+preload_host_spawn_strategy_close_NAME := zypak-preload-host-spawn-strategy-close
+preload_host_spawn_strategy_close_DEPS := preload base
+preload_host_spawn_strategy_close_SOURCES := \
+	no_close_host_fd.cc \
+
+$(call build_shlib,preload_host_spawn_strategy_close)
 
 preload_child_SOURCE_DIR := preload/child
 preload_child_NAME := zypak-preload-child
@@ -150,6 +157,7 @@ install : all
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-mimic-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-spawn-strategy.so
+	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-host-spawn-strategy-close.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child-mimic-strategy.so
 	install -Dm 755 -t $(FLATPAK_DEST)/lib build/libzypak-preload-child-spawn-strategy.so

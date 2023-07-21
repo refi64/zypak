@@ -118,16 +118,11 @@ bool ApplyFdMapFromArgs(ArgsView::iterator* it, ArgsView::iterator last) {
   return true;
 }
 
+std::string GetZypakLib(std::string_view libdir, std::string_view name) {
+  return (fs::path(libdir) / ("libzypak-preload-"s + std::string(name) + ".so")).string();
+}
+
 std::string GetPreload(std::string_view mode, std::string_view libdir) {
-  std::vector<std::string> preload_names;
-
-  preload_names.emplace_back(mode);
-  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
-    preload_names.push_back(std::string(mode) + "-spawn-strategy");
-  } else {
-    preload_names.push_back(std::string(mode) + "-mimic-strategy");
-  }
-
   std::vector<std::string> preload_libs;
 
   // LD_PRELOAD is loaded in left-to-right order, and the last reference to a symbol is used to
@@ -137,9 +132,18 @@ std::string GetPreload(std::string_view mode, std::string_view libdir) {
     preload_libs.push_back(std::string(*preload));
   }
 
-  for (const std::string& name : preload_names) {
-    fs::path path = fs::path(libdir) / ("libzypak-preload-"s + name + ".so");
-    preload_libs.push_back(path.string());
+  preload_libs.push_back(GetZypakLib(libdir, mode));
+  if (Env::Test(Env::kZypakZygoteStrategySpawn)) {
+    preload_libs.push_back(GetZypakLib(libdir, std::string(mode) + "-spawn-strategy"));
+    if (mode == "host") {
+      if (auto crlib = Env::Get(Env::kZypakSettingCefLibraryPath)) {
+        preload_libs.emplace_back(*crlib);
+      }
+
+      preload_libs.push_back(GetZypakLib(libdir, "host-spawn-strategy-close"));
+    }
+  } else {
+    preload_libs.push_back(GetZypakLib(libdir, std::string(mode) + "-mimic-strategy"));
   }
 
   return Join(preload_libs.begin(), preload_libs.end(), ":");

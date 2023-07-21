@@ -39,6 +39,7 @@ class Env {
   static constexpr cstring_view kZypakSettingExposeWidevinePath = "ZYPAK_EXPOSE_WIDEVINE_PATH";
   static constexpr cstring_view kZypakSettingLdPreload = "ZYPAK_LD_PRELOAD";
   static constexpr cstring_view kZypakSettingSpawnLatestOnReexec = "ZYPAK_SPAWN_LATEST_ON_REEXEC";
+  static constexpr cstring_view kZypakSettingCefLibraryPath = "ZYPAK_CEF_LIBRARY_PATH";
 };
 
 }  // namespace zypak

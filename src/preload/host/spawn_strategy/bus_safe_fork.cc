@@ -14,7 +14,7 @@
 #include "base/debug.h"
 #include "dbus/bus.h"
 #include "preload/declare_override.h"
-#include "preload/host/spawn_strategy/no_close_host_fd.h"
+#include "preload/host/spawn_strategy/close/no_close_host_fd.h"
 
 using namespace zypak;
 
