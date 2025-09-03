@@ -9,8 +9,8 @@ $(1)_CXXFLAGS += $$(foreach dep,$$($(1)_DEPS),$$($$(dep)_PUBLIC_CXXFLAGS))
 _$(1)_builddir:
 	@mkdir -p $$(dir $$($(1)_OBJECTS))
 
-$(OBJ)/$(1)/%.o $(DEP)/$(1)/%.d: $$($(1)_SOURCE_DIR_FULL)/%.cc | _$(1)_builddir
-	$(CXX) $(CXXFLAGS) $$($(1)_CXXFLAGS) -MD -c -o $$@ $$<
+$(OBJ)/$(1)/%.o $(OBJ)/$(1)/%.d: $$($(1)_SOURCE_DIR_FULL)/%.cc | _$(1)_builddir
+	$(CXX) $(CXXFLAGS) $$($(1)_CXXFLAGS) -MD -c -o $(OBJ)/$(1)/$$*.o $$<
 
 -include $$($(1)_OBJECTS:.o=.d)
 
