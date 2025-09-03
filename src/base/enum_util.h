@@ -20,7 +20,7 @@ template <typename T>
 class FlagOrBool {
  public:
   FlagOrBool(T value) : value_(value) {}
-  FlagOrBool(const FlagOrBool<T>& other) : value_(other.value) {}
+  FlagOrBool(const FlagOrBool<T>& other) : value_(other.value_) {}
 
   operator T() { return value_; }
   operator bool() { return static_cast<bool>(value_); }
