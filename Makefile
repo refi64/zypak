@@ -10,6 +10,8 @@ CXX := g++
 CXXFLAGS := \
 		-DZYPAK_RELEASE="\"$(shell git describe --tags --dirty)\"" \
 		-fstack-protector-all -fstack-clash-protection -Wall -Werror \
+		-fno-delete-null-pointer-checks -ftrivial-auto-var-init=zero \
+		-Og -D_FORTIFY_SOURCE=2 -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack \
 		-std=c++20 -g -pthread \
 		-Inickle -Isrc \
 		$(LIBSYSTEMD_CFLAGS) $(DBUS_CFLAGS)
