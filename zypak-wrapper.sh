@@ -7,6 +7,7 @@ if [[ -d "$self_dir/build" ]]; then
 else
   export ZYPAK_BIN="$self_dir"
   export ZYPAK_LIB="$self_dir/../lib"
+  export XCURSOR_PATH="/run/host/user-share/icons:/run/host/share/icons"
 fi
 
 exec "$ZYPAK_BIN/zypak-helper" host - "$@"
